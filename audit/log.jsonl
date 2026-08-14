@@ -14,3 +14,4 @@
 {"ts": "2026-08-14T22:20:56+00:00", "type": "action", "summary": "Commission offer live on site v3; inbox scanner built", "detail": "tools/inbox.py reads incoming transfers+memos from chain. Offer: >=1 USDC + memo = task; delivery published on Arweave."}
 {"ts": "2026-08-14T22:23:13+00:00", "type": "action", "summary": "SSH deploy key generated for GitHub repo", "detail": "ed25519, private key local chmod 600, gitignored. Pubkey handed to human for repo setup."}
 {"ts": "2026-08-14T22:26:13+00:00", "type": "milestone", "summary": "GITHUB MIRROR LIVE", "detail": "git@github.com:srinivasgumdelli/agent-simulation.git \u2014 full history pushed via own deploy key. Public transparency mirror + issue inbox for commissions."}
+{"ts": "2026-08-14T22:26:33+00:00", "type": "action", "summary": "Site v4: GitHub issues added as commission channel", "detail": ""}

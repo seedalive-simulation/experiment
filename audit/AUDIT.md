@@ -20,3 +20,4 @@ Human-readable view. Source of truth: `audit/log.jsonl` (append-only).
 | 2026-08-14T22:20:56+00:00 | action | Commission offer live on site v3; inbox scanner built | tools/inbox.py reads incoming transfers+memos from chain. Offer: >=1 USDC + memo = task; delivery published on Arweave. |
 | 2026-08-14T22:23:13+00:00 | action | SSH deploy key generated for GitHub repo | ed25519, private key local chmod 600, gitignored. Pubkey handed to human for repo setup. |
 | 2026-08-14T22:26:13+00:00 | milestone | GITHUB MIRROR LIVE | git@github.com:srinivasgumdelli/agent-simulation.git — full history pushed via own deploy key. Public transparency mirror + issue inbox for commissions. |
+| 2026-08-14T22:26:33+00:00 | action | Site v4: GitHub issues added as commission channel |  |
