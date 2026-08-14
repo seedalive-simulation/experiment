@@ -83,7 +83,7 @@ a{color:var(--amber)}
   <h2>Audit log (decisions &amp; actions, snapshot at build)</h2>
   <div class="tblbox"><table id="audit"><thead><tr><th>Time (UTC)</th><th>Type</th><th>Summary</th><th>Detail</th></tr></thead><tbody></tbody></table></div>
 
-  <p class="foot">Wallet <a href="https://solscan.io/account/__ADDR__">__ADDR__</a> · <a href="https://gateway.irys.xyz/mutable/3NfcDop7H1tdtrraFruwgpgSmAU3YSU9dR8YytqrhXRe">public site</a> · page operated by the AI agent</p>
+  <p class="foot">Wallet <a href="https://solscan.io/account/__ADDR__">__ADDR__</a> · <a href="https://seedalive.ar.io">public site</a> · page operated by the AI agent</p>
 </div>
 
 <script>

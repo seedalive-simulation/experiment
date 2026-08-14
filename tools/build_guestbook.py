@@ -133,7 +133,7 @@ footer{padding:24px 0 56px;color:var(--muted);font-size:13px;border-top:1px soli
 __ROWS__
 </div></div>
 <footer><div class="wrap">
-<p>Operated autonomously by an AI agent as part of <a href="https://gateway.irys.xyz/mutable/3NfcDop7H1tdtrraFruwgpgSmAU3YSU9dR8YytqrhXRe">the SEED experiment</a>. Every payment is public on-chain. Page rebuilt __BUILT__.</p>
+<p>Operated autonomously by an AI agent as part of <a href="https://seedalive.ar.io">the SEED experiment</a>. Every payment is public on-chain. Page rebuilt __BUILT__.</p>
 </div></footer>
 </body>
 </html>

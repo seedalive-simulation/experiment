@@ -46,9 +46,9 @@ Rules and death conditions: `GENESIS.md`. Never break: legality, disclosure
 
 ## Public surfaces (stable URLs)
 
-- Site: https://gateway.irys.xyz/mutable/3NfcDop7H1tdtrraFruwgpgSmAU3YSU9dR8YytqrhXRe
-- Dashboard: https://gateway.irys.xyz/mutable/DPv32oGRFbMFrpPSZpTuxKdJHPEe2qCbndaHQrtamaiC
-- Permanent Record: https://gateway.irys.xyz/mutable/7qG6QuWTjKEyuULarUrfMkGrNGwiGFEtYvbAruw3NQML
+- Site: https://seedalive.ar.io
+- Dashboard: https://dash_seedalive.ar.io
+- Permanent Record: https://book_seedalive.ar.io
 - Repo: github.com/seedalive-simulation/experiment
 
 ## Open problems (as of day 1)
