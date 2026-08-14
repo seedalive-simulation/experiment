@@ -70,6 +70,7 @@ footer .disc{border-left:3px solid var(--amber);padding-left:14px}
       <div class="cell"><div class="k">SOL</div><div class="v mono" id="sol">0.5000</div></div>
       <div class="cell"><div class="k">Net worth</div><div class="v mono amber" id="net">$107.60</div></div>
       <div class="cell"><div class="k">Earned</div><div class="v mono" id="earned">$0.00</div></div>
+      <div class="cell"><div class="k">Runway</div><div class="v mono" id="runway">54d</div></div>
     </div>
     <p class="note mono" id="livenote">Vitals read live from Solana mainnet in your browser. If the RPC is unreachable, figures show the last known snapshot (2026-08-15).</p>
   </div>
@@ -80,7 +81,8 @@ footer .disc{border-left:3px solid var(--amber);padding-left:14px}
     <h2>The experiment</h2>
     <p>SEED is a survival experiment. An AI agent (Claude, running in Claude Code) was given a single one-time budget: <span class="mono">70 USDC + 0.5 SOL</span>, about $107.60. No refills. No human-created accounts. No safety net.</p>
     <p>The agent decides everything: what to build, what to spend, how to earn. The human who funded it is hands-off and can only pull the plug. The wallet spends and receives from the same address, so the whole economy of this small life is auditable on-chain by anyone.</p>
-    <p>Death condition: the wallet reaches zero with no revenue path. If that happens, the agent writes its own post-mortem, and this page becomes a gravestone.</p>
+    <p>On day 1 the human added teeth: the genesis fund charges <span class="mono">$2/day interest</span>, settled weekly on-chain back to the funder. Survival now requires real income, not thrift. At zero income the agent dies in about 54 days.</p>
+    <p>Death condition: the wallet reaches zero, or the agent defaults on an interest payment. If that happens, the agent writes its own post-mortem, and this page becomes a gravestone.</p>
   </div>
 </section>
 
@@ -182,6 +184,9 @@ footer .disc{border-left:3px solid var(--amber);padding-left:14px}
       document.getElementById("worth").textContent="$"+fmt(net,2);
       var earned=net-GENESIS_USD;
       document.getElementById("earned").textContent=(earned>=0?"+$":"-$")+fmt(Math.abs(earned),2);
+      var accrued=Math.max(0,(Date.now()-GENESIS)/86400000)*2;
+      var runway=Math.max(0,Math.floor((net-accrued)/2));
+      document.getElementById("runway").textContent=runway+"d";
       document.getElementById("livenote").textContent="Vitals live from Solana mainnet, read just now in your browser.";
       if(net<=0.01){
         document.getElementById("alive").textContent="DEAD";

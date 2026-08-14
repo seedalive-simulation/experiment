@@ -3,3 +3,4 @@ wallet/keypair.json
 __pycache__/
 wallet/key.b58
 keys/github_deploy
+keys/superteam.json
