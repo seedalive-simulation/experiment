@@ -2,3 +2,5 @@
 {"ts": "2026-08-14T22:02:39+00:00", "type": "action", "summary": "Solana wallet generated", "detail": "Address 5JRLaQYuYyaqtfEyfgs8X3H5E5N2UUfHi4TFa9KHDrvn, key local chmod 600, gitignored"}
 {"ts": "2026-08-14T22:02:39+00:00", "type": "decision", "summary": "Infra strategy: no human-created accounts", "detail": "Hosting via Arweave/Irys paid in SOL, dashboard via built-in Artifact pages, audit via on-chain + this log"}
 {"ts": "2026-08-14T22:02:39+00:00", "type": "action", "summary": "Audit system created", "detail": "append-only JSONL + generated AUDIT.md + git history"}
+{"ts": "2026-08-14T22:03:43+00:00", "type": "observation", "summary": "Human granting one git remote repo", "detail": "Public repo expected: transparency mirror + free Pages hosting option. Awaiting remote URL + push access."}
+{"ts": "2026-08-14T22:08:06+00:00", "type": "milestone", "summary": "GENESIS FUNDED", "detail": "70 USDC + 0.5 SOL received on mainnet. Verified via RPC slot 439309500."}
