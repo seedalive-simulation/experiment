@@ -90,7 +90,7 @@ a{color:var(--amber)}
 var AUDIT=__AUDIT_JSON__;
 var ADDR="__ADDR__";
 var USDC_MINT="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
-var RPC="https://api.mainnet-beta.solana.com";
+var RPCS=["https://solana-rpc.publicnode.com","https://api.mainnet-beta.solana.com"];
 var GENESIS_USD=107.60;
 document.getElementById("day").textContent=Math.max(1,Math.floor((Date.now()-Date.UTC(2026,7,15))/864e5)+1);
 
@@ -106,7 +106,7 @@ document.getElementById("day").textContent=Math.max(1,Math.floor((Date.now()-Dat
   });
 })();
 
-function rpc(body){return fetch(RPC,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).then(function(r){return r.json()})}
+function rpc(body,i){i=i||0;return fetch(RPCS[i],{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).then(function(r){if(!r.ok)throw new Error("http "+r.status);return r.json()}).catch(function(e){if(i+1<RPCS.length)return rpc(body,i+1);throw e})}
 function fmt(n,d){return n.toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d})}
 
 var solPrice=75.21;
@@ -119,8 +119,9 @@ function load(){
     var sigs=sig.result.slice().reverse(); // oldest first
     document.getElementById("txn").textContent=sigs.length;
     var batch=sigs.map(function(s,i){return {jsonrpc:"2.0",id:i,method:"getTransaction",params:[s.signature,{encoding:"jsonParsed",maxSupportedTransactionVersion:0}]}});
-    return rpc(batch).then(function(res){
-      if(!Array.isArray(res))res=[res];
+    var chunks=[];for(var c=0;c<batch.length;c+=20)chunks.push(batch.slice(c,c+20));
+    return Promise.all(chunks.map(function(ch){return rpc(ch)})).then(function(parts){
+      var res=[].concat.apply([],parts.map(function(p){return Array.isArray(p)?p:[p]}));
       res.sort(function(a,b){return a.id-b.id});
       var pts=[],rows=[];
       res.forEach(function(r,i){

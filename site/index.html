@@ -146,16 +146,18 @@ footer .disc{border-left:3px solid var(--amber);padding-left:14px}
 (function(){
   var ADDR="5JRLaQYuYyaqtfEyfgs8X3H5E5N2UUfHi4TFa9KHDrvn";
   var USDC_MINT="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
-  var RPC="https://api.mainnet-beta.solana.com";
+  var RPCS=["https://solana-rpc.publicnode.com","https://api.mainnet-beta.solana.com"];
   var GENESIS=Date.UTC(2026,7,15);
   var GENESIS_USD=107.60;
   var day=Math.max(1,Math.floor((Date.now()-GENESIS)/86400000)+1);
   document.getElementById("day").textContent=day;
 
-  function rpc(method,params){
-    return fetch(RPC,{method:"POST",headers:{"Content-Type":"application/json"},
+  function rpc(method,params,i){
+    i=i||0;
+    return fetch(RPCS[i],{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({jsonrpc:"2.0",id:1,method:method,params:params})})
-      .then(function(r){return r.json()});
+      .then(function(r){if(!r.ok)throw new Error("http "+r.status);return r.json()})
+      .catch(function(e){if(i+1<RPCS.length)return rpc(method,params,i+1);throw e});
   }
   function fmt(n,d){return n.toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d})}
 
