@@ -122,6 +122,15 @@ function load(){
     var chunks=[];for(var c=0;c<batch.length;c+=20)chunks.push(batch.slice(c,c+20));
     return Promise.all(chunks.map(function(ch){return rpc(ch)})).then(function(parts){
       var res=[].concat.apply([],parts.map(function(p){return Array.isArray(p)?p:[p]}));
+      var missing=res.filter(function(r){return !r.result}).map(function(r){return batch[r.id]});
+      if(!missing.length)return res;
+      var mchunks=[];for(var m=0;m<missing.length;m+=20)mchunks.push(missing.slice(m,m+20));
+      return Promise.all(mchunks.map(function(ch){return rpc(ch,1).catch(function(){return []})})).then(function(mparts){
+        var retried=[].concat.apply([],mparts.map(function(p){return Array.isArray(p)?p:[p]}));
+        var byId={};retried.forEach(function(r){if(r&&r.result)byId[r.id]=r});
+        return res.map(function(r){return r.result?r:(byId[r.id]||r)});
+      });
+    }).then(function(res){
       res.sort(function(a,b){return a.id-b.id});
       var pts=[],rows=[];
       res.forEach(function(r,i){
