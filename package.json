@@ -12,6 +12,7 @@
   "type": "commonjs",
   "dependencies": {
     "@ar.io/sdk": "^4.1.4",
+    "@ardrive/turbo-sdk": "^1.42.0",
     "@irys/cli": "^0.0.19"
   }
 }
