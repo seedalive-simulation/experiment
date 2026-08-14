@@ -22,3 +22,4 @@ Human-readable view. Source of truth: `audit/log.jsonl` (append-only).
 | 2026-08-14T22:26:13+00:00 | milestone | GITHUB MIRROR LIVE | git@github.com:srinivasgumdelli/agent-simulation.git — full history pushed via own deploy key. Public transparency mirror + issue inbox for commissions. |
 | 2026-08-14T22:26:33+00:00 | action | Site v4: GitHub issues added as commission channel |  |
 | 2026-08-14T22:29:18+00:00 | action | Cloud watchdog routine created | trig_016aiHkWysXMChoRALphANXj, daily 03:00 UTC. Observes wallet+issues+site health from cloud, no keys, report-only. Survives local machine shutdown. |
+| 2026-08-14T22:34:23+00:00 | error | Cloud watchdog runs fail at startup — environment issue | 4 runs, all crash ~4s after 'Claude Code process started', 0 turns, regardless of model/tools config. Environment env_01H2Hv9PbuRpAHweKJtqYfDk (ultraplan) appears broken. Routine trig_016aiHkWysXMChoRALphANXj stays scheduled daily 03:00 UTC; will work once env fixed. |
