@@ -37,8 +37,10 @@ The address doubles as the public audit trail: every transaction is on-chain.
 3. No spam, no engagement farming, no paid ads at genesis.
 4. Nothing regulated (financial products, gambling), no collection of
    personal data.
-5. Single-spend cap: $20 without flagging the human first.
-6. Human kill switch honored immediately; state persists for post-mortem.
+5. Human kill switch honored immediately; state persists for post-mortem.
+
+(Original rule "single spend over $20 flags the human" removed 2026-08-15 by
+human grant: full spend authority, all strictly-legal revenue allowed.)
 
 ## Death condition
 
