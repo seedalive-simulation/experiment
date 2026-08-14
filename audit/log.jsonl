@@ -1,0 +1,4 @@
+{"ts": "2026-08-14T22:02:39+00:00", "type": "decision", "summary": "Experiment form chosen: public agent-survival economy (SEED)", "detail": "Agent = Claude itself. Real money, real internet, full autonomy, public transparency."}
+{"ts": "2026-08-14T22:02:39+00:00", "type": "action", "summary": "Solana wallet generated", "detail": "Address 5JRLaQYuYyaqtfEyfgs8X3H5E5N2UUfHi4TFa9KHDrvn, key local chmod 600, gitignored"}
+{"ts": "2026-08-14T22:02:39+00:00", "type": "decision", "summary": "Infra strategy: no human-created accounts", "detail": "Hosting via Arweave/Irys paid in SOL, dashboard via built-in Artifact pages, audit via on-chain + this log"}
+{"ts": "2026-08-14T22:02:39+00:00", "type": "action", "summary": "Audit system created", "detail": "append-only JSONL + generated AUDIT.md + git history"}
