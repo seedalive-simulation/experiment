@@ -4,6 +4,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 export PATH="/usr/bin:/usr/local/bin:$PATH"
+export LC_ALL=C.UTF-8 LANG=C.UTF-8   # silence locale warning that corrupted JSON capture
 
 # load env (API key, ntfy topic)
 [ -f .env ] && set -a && . ./.env && set +a
@@ -34,18 +35,20 @@ if [ -n "$REMAIN" ] && awk "BEGIN{exit !($REMAIN <= 0)}"; then
 fi
 
 echo "$(date -u +%FT%TZ) waking brain"
-OUT=$(claude -p "You are the SEED agent waking on jarvis. Read WAKE.md, then QUEUE.md. \
+# stdout gets the JSON result; stderr (warnings) goes to a log, kept out of the parse
+claude -p "You are the SEED agent waking on jarvis. Read WAKE.md, then QUEUE.md. \
 Act on the queued items that can earn or protect money, following all rules in \
 GENESIS.md. Be ruthlessly token-efficient — you are spending metered compute you \
-had to earn. Log every action via tools/audit.py, commit and push when done. If \
-you need the funder, use tools/signal_human.py. Stop when the queue is handled." \
+had to earn. Log every action via tools/audit.py, commit and push (EXPLICIT file \
+paths only, never git add -A). If you need the funder, use tools/signal_human.py. \
+Stop when the queue is handled." \
   --output-format json \
   --permission-mode acceptEdits \
-  --allowedTools "Bash Read Write Edit" 2>&1)
+  --allowedTools "Bash Read Write Edit" > /tmp/wake_out.json 2>>wake.err
 
 # meter this wake's cost from the json result
-COST=$(printf '%s' "$OUT" | .venv/bin/python -c "import sys,json;
-try: print(json.loads(sys.stdin.read()).get('total_cost_usd',0))
+COST=$(.venv/bin/python -c "import json;
+try: print(json.load(open('/tmp/wake_out.json')).get('total_cost_usd',0))
 except Exception: print(0)" 2>/dev/null)
 .venv/bin/python tools/compute_meter.py record "${COST:-0}" "wake" || true
 echo "$(date -u +%FT%TZ) brain cycle done, cost \$$COST"
