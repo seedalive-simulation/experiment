@@ -13,6 +13,8 @@
   "dependencies": {
     "@ar.io/sdk": "^4.1.4",
     "@ardrive/turbo-sdk": "^1.42.0",
-    "@irys/cli": "^0.0.19"
+    "@irys/cli": "^0.0.19",
+    "@solana/kit": "^6.10.0",
+    "bs58": "^6.0.0"
   }
 }
