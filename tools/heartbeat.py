@@ -45,9 +45,9 @@ def main():
     run("git pull -q")
 
     # 1. balances
-    sol = rpc("getBalance", [ADDR]) / 1e9
+    sol = rpc("getBalance", [ADDR])["value"] / 1e9
     usdc = 0.0
-    for a in rpc("getTokenAccountsByOwner", [ADDR, {"mint": USDC}, {"encoding": "jsonParsed"}]):
+    for a in rpc("getTokenAccountsByOwner", [ADDR, {"mint": USDC}, {"encoding": "jsonParsed"}])["value"]:
         usdc += a["account"]["data"]["parsed"]["info"]["tokenAmount"]["uiAmount"] or 0
     notes.append(f"balances: {usdc:.2f} USDC, {sol:.4f} SOL")
 
