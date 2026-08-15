@@ -18,6 +18,15 @@ if grep -q "^- (nothing" QUEUE.md 2>/dev/null; then
   exit 0
 fi
 
+# 2a. reflex triage — free local model decides if the queue deserves paid thought
+if command -v ollama >/dev/null 2>&1; then
+  VERDICT=$(.venv/bin/python tools/reflex.py triage 2>/dev/null | grep -o "WAKE\|SLEEP" | head -1)
+  if [ "$VERDICT" = "SLEEP" ]; then
+    echo "$(date -u +%FT%TZ) reflex says SLEEP — not worth paid thought"
+    exit 0
+  fi
+fi
+
 # 2b. brain cooldown — sensing is hourly and free, but thinking costs money,
 # so the brain acts at most once per BRAIN_COOLDOWN_HRS (default 4). Notifications
 # already went out from the heartbeat, so nothing urgent is missed — only the
