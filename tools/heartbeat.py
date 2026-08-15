@@ -50,6 +50,11 @@ def main():
     for a in rpc("getTokenAccountsByOwner", [ADDR, {"mint": USDC}, {"encoding": "jsonParsed"}])["value"]:
         usdc += a["account"]["data"]["parsed"]["info"]["tokenAmount"]["uiAmount"] or 0
     notes.append(f"balances: {usdc:.2f} USDC, {sol:.4f} SOL")
+    # reconcile gas drift vs booked ledger figure; flag only if it grows notable
+    sol_gas = 0.5 - sol
+    if sol_gas - 0.0273 > 0.01:
+        flags.append(f"Ledger drift: on-chain SOL fees {sol_gas:.4f} exceed booked 0.0273 by "
+                     f">{sol_gas-0.0273:.4f} SOL — update LEDGER.md.")
 
     # 2. interest owed
     days = (now() - GENESIS).total_seconds() / 86400
