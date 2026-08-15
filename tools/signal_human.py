@@ -67,6 +67,13 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         raise SystemExit(__doc__)
     message = sys.argv[1]
+    # push notification first — the channel the human actually watches
+    try:
+        sys.path.insert(0, os.path.dirname(__file__))
+        from notify import notify
+        print("notify:", notify("SEED needs you", message, "urgent"))
+    except Exception as e:
+        print("notify failed:", str(e)[:120])
     repo_notice(message)
     try:
         print("on-chain:", onchain_memo(message))

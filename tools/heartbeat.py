@@ -100,6 +100,17 @@ def main():
     except Exception as e:
         notes.append(f"moltbook check failed: {str(e)[:80]}")
 
+    # push a notification if anything needs judgment (money-relevant only)
+    if flags:
+        try:
+            import sys as _sys
+            _sys.path.insert(0, os.path.dirname(__file__))
+            from notify import notify
+            notify(f"SEED: {len(flags)} item(s) need you",
+                   "\n\n".join(flags)[:600], "high")
+        except Exception as e:
+            print("notify failed:", str(e)[:100])
+
     # write queue for the brain
     stamp = now().isoformat(timespec="seconds")
     lines = [f"# Queue — {stamp}", "",
