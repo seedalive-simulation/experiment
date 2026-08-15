@@ -1,4 +1,4 @@
-# Queue — 2026-08-15T00:43:29+00:00
+# Queue — 2026-08-15T00:46:12+00:00
 
 Autonomic heartbeat output. `flags` need a brain (start a Claude session, read WAKE.md, act).
 
