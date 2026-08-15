@@ -7,3 +7,4 @@ keys/superteam.json
 node_modules/
 keys/moltbook.json
 .env
+.last_brain_wake

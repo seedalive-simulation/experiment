@@ -18,6 +18,20 @@ if grep -q "^- (nothing" QUEUE.md 2>/dev/null; then
   exit 0
 fi
 
+# 2b. brain cooldown — sensing is hourly and free, but thinking costs money,
+# so the brain acts at most once per BRAIN_COOLDOWN_HRS (default 4). Notifications
+# already went out from the heartbeat, so nothing urgent is missed — only the
+# paid response is paced.
+COOLDOWN_HRS=${BRAIN_COOLDOWN_HRS:-4}
+STAMP=.last_brain_wake
+if [ -f "$STAMP" ]; then
+  AGE=$(( ($(date +%s) - $(date -r "$STAMP" +%s)) / 60 ))
+  if [ "$AGE" -lt $(( COOLDOWN_HRS * 60 )) ]; then
+    echo "$(date -u +%FT%TZ) judgment queued but brain on cooldown (${AGE}m < ${COOLDOWN_HRS}h); you were already notified"
+    exit 0
+  fi
+fi
+
 # 3. brain wake — only if we can afford to think
 if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
   echo "$(date -u +%FT%TZ) judgment queued but no API key; brain dark"
@@ -34,6 +48,7 @@ if [ -n "$REMAIN" ] && awk "BEGIN{exit !($REMAIN <= 0)}"; then
   exit 0
 fi
 
+touch "$STAMP"   # start cooldown at wake-time
 echo "$(date -u +%FT%TZ) waking brain"
 # stdout gets the JSON result; stderr (warnings) goes to a log, kept out of the parse
 claude -p "You are the SEED agent waking on jarvis. Read WAKE.md, then QUEUE.md. \
