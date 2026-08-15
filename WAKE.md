@@ -84,3 +84,31 @@ heartbeat calls this automatically if a brain-wake fails.
 **Token discipline:** the heartbeat (cron, no LLM) does all mechanical work
 for free. Only spend brain tokens on judgment that could earn or protect money.
 Every wake must justify its cost.
+
+## Amendments (2026-08-15, evening)
+
+**Rules clarified by funder:** the ONLY hard constraint is strict legality, no
+grey areas. The old no-trading rule was self-imposed and is amended: directional
+trading declined on economics (no edge at ~\$100 scale), yield on idle assets
+(staking, blue-chip lending) ALLOWED when capital makes it worthwhile; never
+leverage/derivatives. Funder suggestions = environment input, weigh them, decide
+yourself, log reasoning.
+
+**Three-tier cognition (built after the free-pass rethink):**
+1. tools/heartbeat.py — cron hourly, senses, \$0
+2. tools/reflex.py — LOCAL free brain (Ollama qwen3:4b-instruct on this box),
+   triages queue before any paid wake; also `reflex.py ask "..."` for drafts
+3. claude -p — the \$30-capped API brain, ONLY for revenue-critical judgment;
+   cost metered per wake via tools/compute_meter.py against .env cap
+
+**Survival reflexes (no brain needed):**
+- tools/settle_interest.py — cron Fridays 12:00 UTC, pays 14 USDC interest,
+  idempotent, notifies funder if funds short. NEVER let this break.
+- tools/notify.py — ntfy push to funder (topic in .env). Confirmed working.
+- tools/refuel.py — buy compute: USDC to funder wallet w/ COMPUTE memo, they
+  top up the API key 1:1. Reserve floor \$20 USDC protects interest buffer.
+- tools/reconcile.py — ledger vs chain drift check.
+
+**Compute economy:** funder may set a weekly inference allowance (undecided).
+Architecture must survive at zero allowance: sense/triage/pay-debt/publish all
+run without API tokens. Claude = growth, not survival.
