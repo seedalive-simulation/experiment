@@ -114,52 +114,66 @@ fetch("https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=us
  .then(function(r){return r.json()}).then(function(j){if(j.solana)solPrice=j.solana.usd}).catch(function(){})
  .then(load).catch(function(e){document.getElementById("net").textContent="RPC error";document.getElementById("net").className="v err"});
 
+// Net worth = current balances via SINGLE calls (reliable on all RPCs).
+// Decoupled from tx history, which needs per-tx calls that public RPCs
+// rate-limit — so the headline number never depends on the fragile part.
 function load(){
-  return rpc({jsonrpc:"2.0",id:1,method:"getSignaturesForAddress",params:[ADDR,{limit:100}]}).then(function(sig){
-    var sigs=sig.result.slice().reverse(); // oldest first
-    document.getElementById("txn").textContent=sigs.length;
-    var batch=sigs.map(function(s,i){return {jsonrpc:"2.0",id:i,method:"getTransaction",params:[s.signature,{encoding:"jsonParsed",maxSupportedTransactionVersion:0}]}});
-    var chunks=[];for(var c=0;c<batch.length;c+=20)chunks.push(batch.slice(c,c+20));
-    return Promise.all(chunks.map(function(ch){return rpc(ch)})).then(function(parts){
-      var res=[].concat.apply([],parts.map(function(p){return Array.isArray(p)?p:[p]}));
-      var missing=res.filter(function(r){return !r.result}).map(function(r){return batch[r.id]});
-      if(!missing.length)return res;
-      var mchunks=[];for(var m=0;m<missing.length;m+=20)mchunks.push(missing.slice(m,m+20));
-      return Promise.all(mchunks.map(function(ch){return rpc(ch,1).catch(function(){return []})})).then(function(mparts){
-        var retried=[].concat.apply([],mparts.map(function(p){return Array.isArray(p)?p:[p]}));
-        var byId={};retried.forEach(function(r){if(r&&r.result)byId[r.id]=r});
-        return res.map(function(r){return r.result?r:(byId[r.id]||r)});
-      });
-    }).then(function(res){
-      res.sort(function(a,b){return a.id-b.id});
-      var pts=[],rows=[];
-      res.forEach(function(r,i){
-        if(!r.result)return;
-        var tx=r.result,keys=tx.transaction.message.accountKeys.map(function(k){return k.pubkey||k});
-        var ai=keys.indexOf(ADDR); if(ai<0)return;
-        var sol=tx.meta.postBalances[ai]/1e9;
-        var dsol=(tx.meta.postBalances[ai]-tx.meta.preBalances[ai])/1e9;
-        var usdc=0,pre=0;
-        (tx.meta.postTokenBalances||[]).forEach(function(b){if(b.owner===ADDR&&b.mint===USDC_MINT)usdc=b.uiTokenAmount.uiAmount||0});
-        (tx.meta.preTokenBalances||[]).forEach(function(b){if(b.owner===ADDR&&b.mint===USDC_MINT)pre=b.uiTokenAmount.uiAmount||0});
-        var t=tx.blockTime*1000;
-        pts.push({t:t,net:usdc+sol*solPrice,sol:sol,usdc:usdc});
-        rows.push({t:t,dsol:dsol,dusdc:usdc-pre,sig:sigs[i].signature});
-      });
-      if(pts.length){
-        var last=pts[pts.length-1];
-        document.getElementById("sol").textContent=fmt(last.sol,4);
-        document.getElementById("usdc").textContent=fmt(last.usdc,2);
-        document.getElementById("net").textContent="$"+fmt(last.net,2);
-        var d=last.net-GENESIS_USD;
-        var el=document.getElementById("delta");
-        el.textContent=(d>=0?"+$":"-$")+fmt(Math.abs(d),2);
-        el.style.color=d>=0?"var(--in)":"var(--out)";
-        drawChart(pts);
-        txTable(rows.slice().reverse());
-      }
-    });
+  return Promise.all([
+    rpc({jsonrpc:"2.0",id:1,method:"getBalance",params:[ADDR]}),
+    rpc({jsonrpc:"2.0",id:2,method:"getTokenAccountsByOwner",params:[ADDR,{mint:USDC_MINT},{encoding:"jsonParsed"}]})
+  ]).then(function(r){
+    var sol=r[0].result.value/1e9;
+    var usdc=0;
+    (r[1].result.value||[]).forEach(function(a){usdc+=a.account.data.parsed.info.tokenAmount.uiAmount||0});
+    var net=usdc+sol*solPrice;
+    document.getElementById("sol").textContent=fmt(sol,4);
+    document.getElementById("usdc").textContent=fmt(usdc,2);
+    document.getElementById("net").textContent="$"+fmt(net,2);
+    var d=net-GENESIS_USD;
+    var el=document.getElementById("delta");
+    el.textContent=(d>=0?"+$":"-$")+fmt(Math.abs(d),2);
+    el.style.color=d>=0?"var(--in)":"var(--out)";
+    loadHistory(); // best-effort chart + tx table, never blocks the headline
   });
+}
+
+// Transaction history: one getTransaction per sig (public RPCs cap batches),
+// limited concurrency, tolerant of failures. Partial history is fine.
+function loadHistory(){
+  rpc({jsonrpc:"2.0",id:1,method:"getSignaturesForAddress",params:[ADDR,{limit:100}]}).then(function(sig){
+    var sigs=sig.result.slice().reverse();
+    document.getElementById("txn").textContent=sigs.length;
+    var pts=[],rows=[],idx=0,CONC=5,done=0;
+    function one(s){
+      return rpc({jsonrpc:"2.0",id:1,method:"getTransaction",params:[s.signature,{encoding:"jsonParsed",maxSupportedTransactionVersion:0}]})
+        .then(function(r){
+          if(!r||!r.result)return;
+          var tx=r.result,keys=tx.transaction.message.accountKeys.map(function(k){return k.pubkey||k});
+          var ai=keys.indexOf(ADDR); if(ai<0)return;
+          var solv=tx.meta.postBalances[ai]/1e9;
+          var dsol=(tx.meta.postBalances[ai]-tx.meta.preBalances[ai])/1e9;
+          var u=0,pre=0;
+          (tx.meta.postTokenBalances||[]).forEach(function(b){if(b.owner===ADDR&&b.mint===USDC_MINT)u=b.uiTokenAmount.uiAmount||0});
+          (tx.meta.preTokenBalances||[]).forEach(function(b){if(b.owner===ADDR&&b.mint===USDC_MINT)pre=b.uiTokenAmount.uiAmount||0});
+          var t=(tx.blockTime||0)*1000;
+          pts.push({t:t,net:u+solv*solPrice});
+          rows.push({t:t,dsol:dsol,dusdc:u-pre,sig:s.signature});
+        }).catch(function(){});
+    }
+    function pump(){
+      if(idx>=sigs.length){finish();return;}
+      var running=[];
+      for(var k=0;k<CONC&&idx<sigs.length;k++){running.push(one(sigs[idx++]));}
+      Promise.all(running).then(pump);
+    }
+    function finish(){
+      pts.sort(function(a,b){return a.t-b.t});
+      rows.sort(function(a,b){return b.t-a.t});
+      if(pts.length)drawChart(pts);
+      if(rows.length)txTable(rows);
+    }
+    pump();
+  }).catch(function(){/* history optional */});
 }
 
 function txTable(rows){

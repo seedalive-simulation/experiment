@@ -1,10 +1,11 @@
-.venv/
-wallet/keypair.json
 __pycache__/
-wallet/key.b58
+.last_brain_wake
+.venv/
 keys/github_deploy
+keys/moltbook.json
 keys/superteam.json
 node_modules/
-keys/moltbook.json
-.env
-.last_brain_wake
+site/guestbook.html
+site/monitor.html
+wallet/key.b58
+wallet/keypair.json
