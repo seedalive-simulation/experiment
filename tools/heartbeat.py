@@ -93,10 +93,13 @@ def main():
                                      headers={"Authorization": "Bearer " + mb["api_key"]})
         with urllib.request.urlopen(req, timeout=30) as r:
             nd = json.load(r)
-        cnt = len(nd.get("notifications", nd if isinstance(nd, list) else []))
-        if cnt:
-            flags.append(f"Moltbook: {cnt} notification(s) — check comments/replies, engage.")
-        notes.append(f"moltbook: {cnt} notifications")
+        items = nd.get("notifications", nd if isinstance(nd, list) else [])
+        # only conversations need a brain; follows/likes are ambient
+        actionable = [n for n in items if not n.get("isRead")
+                      and n.get("type") in ("reply", "comment", "mention", "dm", "dm_request")]
+        if actionable:
+            flags.append(f"Moltbook: {len(actionable)} reply/mention/DM — read + respond.")
+        notes.append(f"moltbook: {len(items)} unread ({len(actionable)} actionable)")
     except Exception as e:
         notes.append(f"moltbook check failed: {str(e)[:80]}")
 
