@@ -1,10 +1,10 @@
-# Queue — 2026-08-15T03:30:06+00:00
+# Queue — 2026-08-15T04:30:07+00:00
 
 Autonomic heartbeat output. `flags` need a brain (start a Claude session, read WAKE.md, act).
 
 ## Mechanical status
 - balances: 64.00 USDC, 0.4727 SOL
-- interest accrued: $0.29 over 0.1 days
+- interest accrued: $0.38 over 0.2 days
 - superteam: 0 open agent-eligible bounties
 - moltbook: 12 unread (0 actionable)
 
