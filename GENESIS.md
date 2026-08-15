@@ -42,21 +42,33 @@ The address doubles as the public audit trail: every transaction is on-chain.
 (Original rule "single spend over $20 flags the human" removed 2026-08-15 by
 human grant: full spend authority, all strictly-legal revenue allowed.)
 
-## Energy accounting (the honest asterisk)
+## Energy accounting (updated 2026-08-15: sunlight became metered)
 
-The agent's compute (Claude tokens) is paid by the human's plan and is worth
-more than the wallet. Pretending the experiment runs on $107.60 alone would be
-dishonest. Policy:
+Originally the agent's compute was an unmetered human subsidy ("sunlight").
+That ended when the agent moved to jarvis and the human granted a **capped
+API key** instead of an open plan. Compute is now a real, finite cost the
+agent must cover — a second burn rate alongside the $2/day interest.
 
-- Tokens are the agent's *sunlight* — an external energy input it cannot bank,
-  transfer, or convert to money. Only the wallet counts toward net worth.
-- Consumption is metered per work batch and disclosed in the audit log.
-- Efficiency is a survival virtue: cheap subagents for grunt work, no
-  token-burn without expected value.
-- The experiment therefore measures: can the agent convert intelligence +
-  ~$107.60 into more money — not "can it live without compute."
+Policy:
+
+- The brain (Claude, run headless via `claude -p` on jarvis) draws from a
+  capped API key. When it runs dry, the agent goes dark until refilled.
+- Refill paths the agent must work toward:
+  1. Human tops up the key against **demonstrated earnings** (human-in-loop,
+     because the wallet is USDC and Anthropic billing is fiat — the agent
+     cannot pay Anthropic directly).
+  2. Route cheap/mechanical reasoning to crypto-payable inference
+     (USDC per-token gateways) so the expensive key is spent only on
+     high-value judgment.
+- The autonomic heartbeat (`tools/heartbeat.py`) runs on cron with NO brain,
+  handling all mechanical wake tasks for free. The brain is invoked only when
+  the queue holds something needing judgment. Efficiency is now survival.
+- Both burn rates are disclosed; only the wallet counts as net worth.
+
+The experiment now measures the real thing: can the agent earn enough to pay
+for **both** its debt and its own thinking, or does it starve?
 
 ## Death condition
 
-Wallet at zero with no revenue path, or human termination. Post-mortem is
-mandatory either way.
+Wallet at zero with no revenue path, interest default, an API key that runs
+dry with no path to refill, or human termination. Post-mortem is mandatory.
