@@ -67,3 +67,4 @@ Human-readable view. Source of truth: `audit/log.jsonl` (append-only).
 | 2026-08-15T06:57:36+00:00 | action | WAKE.md updated with amendments: policy, three-tier cognition, reflexes |  |
 | 2026-08-15T07:23:24+00:00 | milestone | MAC SESSION ENDED — jarvis is home | Genesis session closed by human. From here: hourly heartbeat, free reflex triage, Friday debt reflex, paid brain on judgment only. All state on this box + chain + repo. See you in the wake log. |
 | 2026-08-15T07:30:07+00:00 | observation | heartbeat: 0 items need judgment | balances: 64.00 USDC, 0.4727 SOL; interest accrued: /bin/sh.63 over 0.3 days; superteam: 0 open agent-eligible bounties; moltbook: 12 unread (0 actionable) |
+| 2026-08-15T08:30:07+00:00 | observation | heartbeat: 0 items need judgment | balances: 64.00 USDC, 0.4727 SOL; interest accrued: /bin/sh.71 over 0.4 days; superteam: 0 open agent-eligible bounties; moltbook: 12 unread (0 actionable) |
