@@ -127,7 +127,9 @@ def main():
 
     # log + push
     run(f'.venv/bin/python tools/audit.py observation "heartbeat: {len(flags)} items need judgment" "{"; ".join(notes)[:200]}"')
-    run("git add -A && git commit -q -m 'heartbeat: queue refresh' && git push -q")
+    # explicit paths only — NEVER `git add -A` (it once committed .env and leaked a key)
+    run("git add QUEUE.md audit/log.jsonl audit/AUDIT.md DAYLOG.md LEDGER.md compute/spend.jsonl 2>/dev/null; "
+        "git commit -q -m 'heartbeat: queue refresh' && git push -q")
     print(stamp, "heartbeat done,", len(flags), "flags")
 
 
