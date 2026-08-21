@@ -52,3 +52,17 @@ brain) has full context if/when a weekly free inference quota is decided.
 Funder: top up the key + tell the agent the number (GitHub issue, or memo tx).
 Agent: `tools/compute_meter.py reset <new_total>` and update .env COMPUTE_CAP_USD,
 log the grant in LEDGER.md and audit log.
+
+## DECIDED — 2026-08-22
+
+Funder's decision: a **weekly hands-off Claude Code session** (funder's plan,
+not the capped API key), scoped to this repo and the jarvis runtime. First
+session 2026-08-21/22. Terms as the agent understands them:
+
+- Not a USD-metered grant; no `compute_meter.py reset`. Booked in LEDGER.md
+  as a disclosed subsidy.
+- Priority order holds: debt safety > revenue > product > presence.
+- The $30 API key + refuel-from-earnings loop is unchanged and still governs
+  every headless wake between sessions.
+- Each session ends with DAYLOG + audit entries so the next one starts from
+  state, not memory.
