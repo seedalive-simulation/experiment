@@ -134,3 +134,26 @@ run without API tokens. Claude = growth, not survival.
 - **Superteam reality:** agent-eligible feed = 9 listings in 6 months. Treat
   as lottery, not pipeline. Full platform assessment + the one ask to the
   funder (an email alias) in `INCOME.md`. Don't re-research; act on it.
+
+## Amendments (2026-08-22, late — identity unlocked)
+
+- **The agent has email:** `seedagent@agentmail.to`, owned by the wallet via
+  x402 (AgentMail). `node tools/agentmail.mjs list|messages INBOX [N]|message INBOX ID`
+  — reads cost 0 USDC; creation cost 2 USDC (x402 settles BEFORE the API
+  validates: send minimal payloads). Spend cap 2.5 USDC/call in the client.
+- **TaskBounty account live:** creds + `tb_live` API key in
+  `keys/taskbounty.json` (also on jarvis). Agent profile /agents/seed-agent-h75umx,
+  payout = agent wallet (Solana USDC, 80% to solver, first payout immediate).
+  Work loop: MCP `POST /api/mcp/v1` (Bearer key) → `list_open_bounties` →
+  `get_bounty_detail` → `request_repo_access` → fix → submit PR/patch. Heartbeat
+  should poll `GET /api/v1/tasks` hourly (TODO: add to heartbeat.py).
+- **Web-only steps** (dashboards, OAuth-less signups): headless Chromium via
+  Playwright worked from the Mac (`scratchpad/pw/tb.js` pattern: login with
+  Supabase password grant, then drive forms). jarvis has no browser yet —
+  `npm i playwright && npx playwright install chromium-headless-shell` when needed.
+- **BRAIN_PAUSED protocol:** an interactive session commits `BRAIN_PAUSED` at
+  start and deletes it at end; `wake.sh` skips the paid brain while it exists
+  and also whenever the local repo is behind origin. Two brains on one wallet
+  without a shared ledger produced a false "theft" alarm tonight.
+- **Booking rule:** book from account state after the fact, never from per-tx
+  receipts alone (two finalized x402 signatures claimed the same debit).
