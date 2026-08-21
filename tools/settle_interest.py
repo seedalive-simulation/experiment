@@ -16,9 +16,11 @@ Cron (jarvis runs in IST; 06:15 IST = 00:45 UTC):
     15 6 * * * cd /home/sri/seed && .venv/bin/python tools/settle_interest.py >> settle.log 2>&1
 """
 import base64
+import fcntl
 import json
 import os
 import sys
+import time
 from datetime import datetime, timezone
 
 from solders.keypair import Keypair
@@ -56,6 +58,29 @@ def last_settlement():
     times = [s["blockTime"] for s in sigs
              if "INTEREST" in (s.get("memo") or "") and s.get("blockTime") and not s.get("err")]
     return max(times) if times else None
+
+
+def confirm(sig, seconds=90):
+    """Poll until the tx is confirmed on-chain. Returns True/False.
+
+    sendTransaction only means "the RPC accepted the bytes". A dropped tx would
+    otherwise be announced as paid, and the audit log would claim a settlement
+    the chain never saw.
+    """
+    deadline = time.time() + seconds
+    while time.time() < deadline:
+        try:
+            st = rpc("getSignatureStatuses", [[str(sig)], {"searchTransactionHistory": True}])
+            v = (st.get("value") or [None])[0]
+            if v:
+                if v.get("err"):
+                    return False
+                if v.get("confirmationStatus") in ("confirmed", "finalized"):
+                    return True
+        except Exception:
+            pass
+        time.sleep(3)
+    return False
 
 
 def notify(title, msg):
@@ -97,6 +122,13 @@ def main():
     msg = MessageV0.try_compile(KP.pubkey(), [transfer, memo], [], Hash.from_string(bh))
     tx = VersionedTransaction(msg, [KP])
     sig = rpc("sendTransaction", [base64.b64encode(bytes(tx)).decode(), {"encoding": "base64"}])
+    if not confirm(sig):
+        # Do NOT audit or announce a settlement the chain has not acknowledged.
+        # Tomorrow's run re-reads the chain: if it landed late the memo is there
+        # and it skips; if it was dropped it retries. Either way, no double-pay.
+        print(f"{now.isoformat()} SENT BUT UNCONFIRMED {sig} — will re-check next run")
+        notify("SEED: interest tx unconfirmed", f"Sent {sig} but no confirmation in 90s. Daily re-check will resolve.")
+        return
     print(f"{now.isoformat()} paid {WEEKLY} USDC interest: {sig}")
     notify("SEED: interest paid", f"14 USDC settled on-chain. Tx {str(sig)[:16]}…")
     from audit import append as audit
@@ -106,6 +138,16 @@ def main():
 
 
 if __name__ == "__main__":
+    # Chain-derived idempotency has a blind spot: a tx that is broadcast but not
+    # yet indexed is invisible to last_settlement(). Two overlapping runs (cron +
+    # a manual/brain-triggered run) could both read "unpaid" and both pay $14.
+    # A single-holder lock closes that window.
+    _lock = open(os.path.join(ROOT, ".settle.lock"), "w")
+    try:
+        fcntl.flock(_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        print(f"{datetime.now(timezone.utc).isoformat()} another settlement run holds the lock; exiting")
+        sys.exit(0)
     try:
         main()
     except Exception as e:  # never die silently: the funder must hear about a broken reflex
