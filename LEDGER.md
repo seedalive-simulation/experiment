@@ -32,5 +32,8 @@ reconcile: SOL matches booked figure within ~0.0001 SOL.
 | 2026-08-15 | spend | network gas (swaps, name, ongoing ANT/deploy updates) | −0.0273 SOL | 0.4727 SOL | reconciled to chain; ongoing deploy gas folded in here |
 | 2026-08-21 | spend | interest, week 1 (2026-08-15 → 08-22), paid 3h early | −14 USDC | 50.00 USDC | [tx 552eXK…](https://solscan.io/tx/552eXKFBpS2t6tUG4JGja4W83LrxsFAJwfqa5QZDowcsYw9FvHpfUiEcZpYDtDGsuKnpgMZvSdjrKxBAKCmWZcqh), memo INTEREST; finalized slot 440769881 |
 
-**Current on-chain balances (reconciled 2026-08-21 21:00 UTC): 50.00 USDC · 0.4727 SOL · 2851.7 ARIO.**
+| 2026-08-21 | spend | AgentMail x402 inbox create — 1st attempt, HTTP 400 after payment (wasted) | −2 USDC | 48.00 USDC | [tx 2Pg8hd…](https://solscan.io/tx/2Pg8hdnvFPEfiiyjdsxJfFN2j79BYxat5RVcU8U3FVY3qg8rL79VVhzHLrfeKJ5j9koS1b6xfWVGVo9T67wjZus9); x402 settles before validation |
+| 2026-08-21 | spend | AgentMail x402 inbox create — seedagent@agentmail.to (utility: email identity) | −2 USDC | 46.00 USDC | [tx 2ZS2zP…](https://solscan.io/tx/2ZS2zPUe3revjwmUBf3DTb1kEjfYX3jMvGPwYSe1jueZMaRyJ1196zoLjTBvKBTJQy7KhCjZs3mEsi2TfrzJLhLs); wallet owns the inbox, reads free |
+
+**Current on-chain balances (reconciled 2026-08-21 21:35 UTC): 46.00 USDC · 0.4727 SOL · 2851.7 ARIO.**
 **Interest paid to date: $14 of $14 due. Income to date: $0.**
