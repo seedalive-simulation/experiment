@@ -15,18 +15,13 @@ import urllib.request
 ADDR = "5JRLaQYuYyaqtfEyfgs8X3H5E5N2UUfHi4TFa9KHDrvn"
 USDC = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 ARIO = "DcNnMuFxwhgV4WY1HVSaSEgr92bv2b1vUvEKiNxWqHdF"
-RPC = "https://api.mainnet-beta.solana.com"
 GENESIS_SOL = 0.5
 GENESIS_USDC = 70.0
 
 
-def rpc(method, params):
-    req = urllib.request.Request(RPC, data=json.dumps(
-        {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}).encode(),
-        headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return json.load(r)["result"]
-
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from rpcx import rpc  # noqa: E402
 
 def token_balance(mint):
     res = rpc("getTokenAccountsByOwner", [ADDR, {"mint": mint}, {"encoding": "jsonParsed"}])

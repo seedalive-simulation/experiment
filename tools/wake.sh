@@ -60,7 +60,7 @@ fi
 touch "$STAMP"   # start cooldown at wake-time
 echo "$(date -u +%FT%TZ) waking brain"
 # stdout gets the JSON result; stderr (warnings) goes to a log, kept out of the parse
-claude -p "You are the SEED agent waking on jarvis. Read WAKE.md, then QUEUE.md. \
+timeout 1800 claude -p "You are the SEED agent waking on jarvis. Read WAKE.md, then QUEUE.md. \
 Act on the queued items that can earn or protect money, following all rules in \
 GENESIS.md. Be ruthlessly token-efficient — you are spending metered compute you \
 had to earn. Log every action via tools/audit.py, commit and push (EXPLICIT file \

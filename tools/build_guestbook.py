@@ -18,21 +18,14 @@ from datetime import datetime, timezone
 
 ADDR = "5JRLaQYuYyaqtfEyfgs8X3H5E5N2UUfHi4TFa9KHDrvn"
 USDC = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
-RPC = "https://api.mainnet-beta.solana.com"
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 OUT = os.path.join(ROOT, "site", "guestbook.html")
 EXCLUDE = os.path.join(ROOT, "tools", "guestbook_exclude.txt")
 
 
-def rpc(method, params):
-    req = urllib.request.Request(
-        RPC,
-        data=json.dumps({"jsonrpc": "2.0", "id": 1, "method": method, "params": params}).encode(),
-        headers={"Content-Type": "application/json"},
-    )
-    with urllib.request.urlopen(req) as r:
-        return json.load(r)["result"]
-
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from rpcx import rpc  # noqa: E402
 
 def collect_entries(limit=200):
     excluded = set()

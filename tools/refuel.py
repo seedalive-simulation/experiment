@@ -31,17 +31,12 @@ USDC_MINT = Pubkey.from_string("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v")
 TOKEN_PROGRAM = Pubkey.from_string("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")
 ATA_PROGRAM = Pubkey.from_string("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL")
 MEMO_PROGRAM = Pubkey.from_string("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr")
-RPC = "https://api.mainnet-beta.solana.com"
 RESERVE_USDC = 20.0  # never spend compute below this (interest + emergency buffer)
 
 
-def rpc(method, params):
-    req = urllib.request.Request(RPC, data=json.dumps(
-        {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}).encode(),
-        headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return json.load(r)["result"]
-
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from rpcx import rpc  # noqa: E402
 
 def ata(owner):
     seeds = [bytes(owner), bytes(TOKEN_PROGRAM), bytes(USDC_MINT)]

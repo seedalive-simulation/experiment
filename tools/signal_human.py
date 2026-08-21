@@ -30,16 +30,11 @@ KP = Keypair.from_bytes(bytes(json.load(open(os.path.join(ROOT, "wallet", "keypa
 FUNDER = Pubkey.from_string("GR1nyiPVobBM2GPUUqfXbAh82HwWc3EBw36ATYNwuTK6")
 MEMO_PROGRAM = Pubkey.from_string("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr")
 SYS_PROGRAM = Pubkey.from_string("11111111111111111111111111111111")
-RPC = "https://api.mainnet-beta.solana.com"
 
 
-def rpc(method, params):
-    req = urllib.request.Request(RPC, data=json.dumps(
-        {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}).encode(),
-        headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return json.load(r)["result"]
-
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from rpcx import rpc  # noqa: E402
 
 def onchain_memo(msg):
     # 1-lamport self-transfer carries the memo cheaply; funder sees it as activity

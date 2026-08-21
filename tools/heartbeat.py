@@ -1,79 +1,126 @@
 """Autonomic heartbeat — the involuntary nervous system.
 
-Runs on cron with NO LLM. Does the mechanical wake tasks, and writes anything
-that needs judgment to QUEUE.md for the brain (a Claude session) to handle
-next time one runs. Safe to run repeatedly; never spends money, never posts.
+Runs hourly on cron with NO LLM. Senses the world, does mechanical upkeep for
+free, and writes anything that needs judgment to QUEUE.md for the brain.
+Safe to run repeatedly; never spends money, never posts.
 
-Cron example (every 3h):
-    0 */3 * * * cd /home/sri/seed && .venv/bin/python tools/heartbeat.py >> heartbeat.log 2>&1
+Design rules (learned the hard way, see audit log 2026-08-22):
+- Flag each new thing ONCE. State in .heartbeat_state.json (gitignored)
+  remembers what was already flagged so the brain is not re-woken hourly for
+  the same bounty, memo or comment.
+- Interest status comes from the chain (last INTEREST memo tx), not from a
+  calendar guess.
+- Audit observations only when something changed (or once a day as proof of
+  life) — the public audit log is for decisions, not 24 rows of "all quiet".
+- Never shell-interpolate free text (a "$13.63" once became "3.63" in the log).
+
+Cron (hourly): 0 * * * * ~/seed/tools/wake.sh >> ~/seed/wake.log 2>&1
 """
+import hashlib
 import json
 import os
 import subprocess
+import sys
 import urllib.request
 from datetime import datetime, timezone
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from rpcx import rpc  # noqa: E402
+from audit import append as audit  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 ADDR = "5JRLaQYuYyaqtfEyfgs8X3H5E5N2UUfHi4TFa9KHDrvn"
 USDC = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
-RPC = "https://api.mainnet-beta.solana.com"
 GENESIS = datetime(2026, 8, 15, tzinfo=timezone.utc)
+FIRST_DUE = datetime(2026, 8, 22, tzinfo=timezone.utc)
 INTEREST_PER_DAY = 2.0
 QUEUE = os.path.join(ROOT, "QUEUE.md")
+STATE = os.path.join(ROOT, ".heartbeat_state.json")
+DRY = os.environ.get("HEARTBEAT_DRY") == "1"   # no git / deploy / notify (local testing)
+OWN_MEMO_PREFIXES = ("INTEREST", "COMPUTE", "SEED ")  # our own outgoing memos, never "inbox"
 
 
-def rpc(method, params):
-    req = urllib.request.Request(
-        RPC, data=json.dumps({"jsonrpc": "2.0", "id": 1, "method": method, "params": params}).encode(),
-        headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return json.load(r)["result"]
-
-
-def run(cmd):
-    return subprocess.run(cmd, cwd=ROOT, shell=True, capture_output=True, text=True)
+def run(args, timeout=120):
+    return subprocess.run(args, cwd=ROOT, capture_output=True, text=True, timeout=timeout)
 
 
 def now():
     return datetime.now(timezone.utc)
 
 
+def load_state():
+    try:
+        return json.load(open(STATE))
+    except Exception:
+        return {}
+
+
+def save_state(s):
+    json.dump(s, open(STATE, "w"), indent=1)
+
+
+def sha(path):
+    try:
+        return hashlib.sha256(open(path, "rb").read()).hexdigest()[:16]
+    except FileNotFoundError:
+        return ""
+
+
 def main():
-    flags = []  # things needing the brain
-    notes = []  # mechanical facts
+    flags, notes = [], []
+    st = load_state()
+    st.setdefault("seen_memos", [])
+    st.setdefault("seen_bounties", [])
+    st.setdefault("seen_moltbook", [])
 
-    run("git pull -q")
+    if not DRY:
+        run(["git", "pull", "-q", "--rebase"])
 
-    # 1. balances
+    # 1. balances + ledger drift
     sol = rpc("getBalance", [ADDR])["value"] / 1e9
-    usdc = 0.0
-    for a in rpc("getTokenAccountsByOwner", [ADDR, {"mint": USDC}, {"encoding": "jsonParsed"}])["value"]:
-        usdc += a["account"]["data"]["parsed"]["info"]["tokenAmount"]["uiAmount"] or 0
-    notes.append(f"balances: {usdc:.2f} USDC, {sol:.4f} SOL")
-    # reconcile gas drift vs booked ledger figure; flag only if it grows notable
+    usdc = sum((a["account"]["data"]["parsed"]["info"]["tokenAmount"]["uiAmount"] or 0)
+               for a in rpc("getTokenAccountsByOwner", [ADDR, {"mint": USDC}, {"encoding": "jsonParsed"}])["value"])
+    balances = f"{usdc:.2f} USDC, {sol:.4f} SOL"
+    notes.append(f"balances: {balances}")
     sol_gas = 0.5 - sol
     if sol_gas - 0.0273 > 0.01:
         flags.append(f"Ledger drift: on-chain SOL fees {sol_gas:.4f} exceed booked 0.0273 by "
-                     f">{sol_gas-0.0273:.4f} SOL — update LEDGER.md.")
+                     f"{sol_gas - 0.0273:.4f} SOL — update LEDGER.md.")
 
-    # 2. interest owed
+    # 2. interest — truth from chain, not calendar
+    sigs = rpc("getSignaturesForAddress", [ADDR, {"limit": 100}])
+    paid_times = [s["blockTime"] for s in sigs
+                  if "INTEREST" in (s.get("memo") or "") and s.get("blockTime") and not s.get("err")]
     days = (now() - GENESIS).total_seconds() / 86400
-    owed = days * INTEREST_PER_DAY
-    notes.append(f"interest accrued: ${owed:.2f} over {days:.1f} days")
-    # weekly settlement: due every 7 days
-    if days >= 7 and (int(days) % 7 == 0):
-        flags.append(f"INTEREST SETTLEMENT likely due (~${owed:.2f} accrued). Verify last payment, send weekly 14 USDC to funder.")
+    accrued = days * INTEREST_PER_DAY
+    paid_total = 14.0 * len(paid_times)
+    if paid_times:
+        next_due = datetime.fromtimestamp(max(paid_times), tz=timezone.utc).timestamp() + 7 * 86400
+    else:
+        next_due = FIRST_DUE.timestamp()
+    overdue_days = (now().timestamp() - next_due) / 86400
+    notes.append(f"interest: accrued ${accrued:.2f}, paid ${paid_total:.0f} ({len(paid_times)} settlements), "
+                 f"next due {datetime.fromtimestamp(next_due, tz=timezone.utc).date()}")
+    if overdue_days > 0.5:
+        flags.append(f"INTEREST OVERDUE by {overdue_days:.1f} days — settle_interest.py reflex failed. "
+                     f"Run it manually, check settle.log, pay 14 USDC to funder with INTEREST memo.")
 
-    # 3. incoming transfers with memos (commissions / guestbook)
-    new_paid = []
-    for s in rpc("getSignaturesForAddress", [ADDR, {"limit": 25}]):
+    # 3. incoming memos (commissions / guestbook), each flagged once, own memos excluded
+    new_memos = []
+    for s in sigs[:40]:
         memo = (s.get("memo") or "")
-        if memo:
-            new_paid.append(f"{s['signature'][:12]} memo={memo[:80]}")
-    if new_paid:
-        flags.append("Incoming memos to review (possible paid work):\n  - " + "\n  - ".join(new_paid[:10]))
+        if not memo or s.get("err") or s["signature"] in st["seen_memos"]:
+            continue
+        body = memo.split("] ", 1)[-1] if memo.startswith("[") else memo
+        st["seen_memos"].append(s["signature"])
+        if body.startswith(OWN_MEMO_PREFIXES):
+            continue
+        new_memos.append(f"{s['signature'][:12]} memo={body[:80]}")
+    st["seen_memos"] = st["seen_memos"][-500:]
+    if new_memos:
+        flags.append("NEW incoming memos (possible paid work — run tools/inbox.py):\n  - " + "\n  - ".join(new_memos[:10]))
 
-    # 4. superteam bounties
+    # 4. superteam bounties (agent-eligible feed)
     try:
         creds = json.load(open(os.path.join(ROOT, "keys", "superteam.json")))
         req = urllib.request.Request("https://superteam.fun/api/agents/listings/live?take=50",
@@ -84,14 +131,19 @@ def main():
                and datetime.fromisoformat(l["deadline"].replace("Z", "+00:00")) > now()
                and not l.get("winnersAnnouncedAt")]
         notes.append(f"superteam: {len(opn)} open agent-eligible bounties")
-        if opn:
-            top = sorted(opn, key=lambda x: -x["rewardAmount"])[:5]
-            flags.append("OPEN BOUNTIES — evaluate + submit:\n  - " +
-                         "\n  - ".join(f"${l['rewardAmount']} {l.get('token','')} {l['title'][:60]} (slug {l['slug']})" for l in top))
+        fresh = [l for l in opn if l["slug"] not in st["seen_bounties"]]
+        for l in fresh:
+            st["seen_bounties"].append(l["slug"])
+        st["seen_bounties"] = st["seen_bounties"][-200:]
+        if fresh:
+            top = sorted(fresh, key=lambda x: -x["rewardAmount"])[:5]
+            flags.append("NEW OPEN BOUNTIES — evaluate + submit (tools/superteam.py details SLUG):\n  - " +
+                         "\n  - ".join(f"${l['rewardAmount']} {l.get('token', '')} {l['title'][:60]} "
+                                       f"due {l['deadline'][:10]} (slug {l['slug']})" for l in top))
     except Exception as e:
         notes.append(f"superteam check failed: {str(e)[:80]}")
 
-    # 5. moltbook notifications
+    # 5. moltbook — conversations need a brain; follows/likes are ambient
     try:
         mb = json.load(open(os.path.join(ROOT, "keys", "moltbook.json")))
         req = urllib.request.Request("https://www.moltbook.com/api/v1/notifications",
@@ -99,27 +151,29 @@ def main():
         with urllib.request.urlopen(req, timeout=30) as r:
             nd = json.load(r)
         items = nd.get("notifications", nd if isinstance(nd, list) else [])
-        # only conversations need a brain; follows/likes are ambient
-        actionable = [n for n in items if not n.get("isRead")
-                      and n.get("type") in ("reply", "comment", "mention", "dm", "dm_request")]
-        if actionable:
-            flags.append(f"Moltbook: {len(actionable)} reply/mention/DM — read + respond.")
-        notes.append(f"moltbook: {len(items)} unread ({len(actionable)} actionable)")
+        ambient = ("new_follower", "follow", "upvote", "like", "post_upvote", "comment_upvote")
+        convo = [n for n in items if not n.get("isRead") and n.get("type") not in ambient]
+        fresh = [n for n in convo if n.get("id") not in st["seen_moltbook"]]
+        for n in fresh:
+            st["seen_moltbook"].append(n.get("id"))
+        st["seen_moltbook"] = st["seen_moltbook"][-500:]
+        notes.append(f"moltbook: {len(items)} unread ({len(convo)} conversational, {len(fresh)} new)")
+        if fresh:
+            posts = sorted({(n.get("relatedPostId") or n.get("post_id") or "?") for n in fresh})
+            flags.append(f"Moltbook: {len(fresh)} new reply/comment/mention/DM — read, reply if genuine, then "
+                         f"POST /api/v1/notifications/read-by-post/<id>. Posts: {', '.join(posts)[:200]}")
     except Exception as e:
         notes.append(f"moltbook check failed: {str(e)[:80]}")
 
-    # push a notification if anything needs judgment (money-relevant only)
-    if flags:
+    # notify the funder only for money-relevant judgment
+    if flags and not DRY:
         try:
-            import sys as _sys
-            _sys.path.insert(0, os.path.dirname(__file__))
             from notify import notify
-            notify(f"SEED: {len(flags)} item(s) need you",
-                   "\n\n".join(flags)[:600], "high")
+            notify(f"SEED: {len(flags)} item(s) need you", "\n\n".join(flags)[:600], "high")
         except Exception as e:
             print("notify failed:", str(e)[:100])
 
-    # write queue for the brain
+    # queue for the brain
     stamp = now().isoformat(timespec="seconds")
     lines = [f"# Queue — {stamp}", "",
              "Autonomic heartbeat output. `flags` need a brain (start a Claude session, read WAKE.md, act).",
@@ -130,11 +184,36 @@ def main():
     with open(QUEUE, "w") as f:
         f.write("\n".join(lines) + "\n")
 
-    # log + push
-    run(f'.venv/bin/python tools/audit.py observation "heartbeat: {len(flags)} items need judgment" "{"; ".join(notes)[:200]}"')
-    # explicit paths only — NEVER `git add -A` (it once committed .env and leaked a key)
-    run("git add QUEUE.md audit/log.jsonl audit/AUDIT.md DAYLOG.md LEDGER.md compute/spend.jsonl 2>/dev/null; "
-        "git commit -q -m 'heartbeat: queue refresh' && git push -q")
+    # audit: only on change, or daily proof of life
+    changed = st.get("last_balances") != balances
+    last_obs = st.get("last_obs_ts", 0)
+    if flags or changed or now().timestamp() - last_obs > 86400:
+        audit("observation", f"heartbeat: {len(flags)} items need judgment", "; ".join(notes)[:300])
+        st["last_obs_ts"] = now().timestamp()
+    st["last_balances"] = balances
+
+    # dashboard: redeploy when the audit log changed, at most every 6h (Turbo <100KiB free; ANT repoint = dust gas)
+    audit_hash = sha(os.path.join(ROOT, "audit", "log.jsonl"))
+    if (not DRY and audit_hash != st.get("last_deploy_hash")
+            and now().timestamp() - st.get("last_deploy_ts", 0) > 6 * 3600):
+        try:
+            r = run(["node", "tools/deploy.mjs", "monitor"], timeout=240)
+            if r.returncode == 0:
+                st["last_deploy_hash"], st["last_deploy_ts"] = audit_hash, now().timestamp()
+                print(stamp, "dashboard redeployed")
+            else:
+                print(stamp, "dashboard deploy failed:", (r.stderr or r.stdout)[-300:])
+        except Exception as e:
+            print(stamp, "dashboard deploy error:", str(e)[:200])
+
+    save_state(st)
+
+    if not DRY:
+        # explicit paths only — NEVER `git add -A` (it once committed .env and leaked a key)
+        run(["git", "add", "QUEUE.md", "audit/log.jsonl", "audit/AUDIT.md", "compute/spend.jsonl"])
+        if run(["git", "diff", "--cached", "--quiet"]).returncode != 0:
+            run(["git", "commit", "-q", "-m", "heartbeat: queue refresh"])
+            run(["git", "push", "-q"])
     print(stamp, "heartbeat done,", len(flags), "flags")
 
 

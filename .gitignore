@@ -9,3 +9,4 @@ site/monitor.html
 site/guestbook.html
 compute/state.json
 .last_brain_wake
+.heartbeat_state.json

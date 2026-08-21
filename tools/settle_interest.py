@@ -1,17 +1,24 @@
 """Weekly interest settlement — a survival reflex, no brain required.
 
-Pays 14 USDC (7 days x $2) to the funder every Friday. Default = death, so
-this must never depend on inference being available. Idempotent: checks
-on-chain history for a settlement in the last 6 days before paying.
+Pays 14 USDC (7 days x $2) to the funder every 7 days, first on 2026-08-22.
+Default = death, so this must never depend on inference being available.
 
-Cron (Fridays 12:00 UTC):
-    0 12 * * 5 cd /home/sri/seed && .venv/bin/python tools/settle_interest.py >> settle.log 2>&1
+Runs DAILY (cron 00:45 UTC) and is idempotent: it reads the chain for the last
+INTEREST memo tx and pays only when >= 6.9 days have elapsed since it (or since
+the first-due date when nothing has been paid yet). A daily check means a missed
+cron minute, an RPC outage or a reboot costs hours, not a week.
+
+History: the original cron fired Fridays only, but the first due date
+(2026-08-22) is a Saturday, so it would have paid 6 days late. Found and fixed
+on the due date itself — see audit log 2026-08-21/22.
+
+Cron (jarvis runs in IST; 06:15 IST = 00:45 UTC):
+    15 6 * * * cd /home/sri/seed && .venv/bin/python tools/settle_interest.py >> settle.log 2>&1
 """
 import base64
 import json
 import os
 import sys
-import urllib.request
 from datetime import datetime, timezone
 
 from solders.keypair import Keypair
@@ -21,6 +28,9 @@ from solders.message import MessageV0
 from solders.transaction import VersionedTransaction
 from solders.hash import Hash
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from rpcx import rpc  # noqa: E402
+
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 KP = Keypair.from_bytes(bytes(json.load(open(os.path.join(ROOT, "wallet", "keypair.json")))))
 ADDR = str(KP.pubkey())
@@ -29,17 +39,10 @@ USDC_MINT = Pubkey.from_string("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v")
 TOKEN_PROGRAM = Pubkey.from_string("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")
 ATA_PROGRAM = Pubkey.from_string("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL")
 MEMO_PROGRAM = Pubkey.from_string("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr")
-RPC = "https://api.mainnet-beta.solana.com"
 WEEKLY = 14.0
 FIRST_DUE = datetime(2026, 8, 22, tzinfo=timezone.utc)
-
-
-def rpc(method, params):
-    req = urllib.request.Request(RPC, data=json.dumps(
-        {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}).encode(),
-        headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return json.load(r)["result"]
+PERIOD_DAYS = 6.9  # pay once >= this many days since the last settlement (weekly cadence, daily check)
+EARLY_HOURS = 6    # paying a few hours before due is never harmful; paying late is death
 
 
 def ata(owner):
@@ -47,14 +50,12 @@ def ata(owner):
         [bytes(owner), bytes(TOKEN_PROGRAM), bytes(USDC_MINT)], ATA_PROGRAM)[0]
 
 
-def recently_settled():
-    """True if an INTEREST memo tx went out in the last 6 days."""
-    now = datetime.now(timezone.utc).timestamp()
-    for s in rpc("getSignaturesForAddress", [ADDR, {"limit": 40}]):
-        memo = s.get("memo") or ""
-        if "INTEREST" in memo and s.get("blockTime") and now - s["blockTime"] < 6 * 86400:
-            return True
-    return False
+def last_settlement():
+    """Unix time of the most recent INTEREST memo tx, or None if never paid."""
+    sigs = rpc("getSignaturesForAddress", [ADDR, {"limit": 100}])
+    times = [s["blockTime"] for s in sigs
+             if "INTEREST" in (s.get("memo") or "") and s.get("blockTime") and not s.get("err")]
+    return max(times) if times else None
 
 
 def notify(title, msg):
@@ -68,12 +69,15 @@ def notify(title, msg):
 
 def main():
     now = datetime.now(timezone.utc)
-    if now < FIRST_DUE:
+    if (FIRST_DUE - now).total_seconds() > EARLY_HOURS * 3600:
         print(f"{now.isoformat()} not yet due (first due {FIRST_DUE.date()})")
         return
-    if recently_settled():
-        print(f"{now.isoformat()} already settled this week")
-        return
+    last = last_settlement()
+    if last is not None:
+        since = (now.timestamp() - last) / 86400
+        if since < PERIOD_DAYS:
+            print(f"{now.isoformat()} settled {since:.1f} days ago; next in {PERIOD_DAYS - since:.1f} days")
+            return
 
     res = rpc("getTokenAccountsByOwner", [ADDR, {"mint": str(USDC_MINT)}, {"encoding": "jsonParsed"}])
     bal = sum(a["account"]["data"]["parsed"]["info"]["tokenAmount"]["uiAmount"] or 0 for a in res["value"])
@@ -95,9 +99,16 @@ def main():
     sig = rpc("sendTransaction", [base64.b64encode(bytes(tx)).decode(), {"encoding": "base64"}])
     print(f"{now.isoformat()} paid {WEEKLY} USDC interest: {sig}")
     notify("SEED: interest paid", f"14 USDC settled on-chain. Tx {str(sig)[:16]}…")
-    os.system(f'cd {ROOT} && .venv/bin/python tools/audit.py spend "Weekly interest settled: 14 USDC to funder" "tx {sig}" '
-              f'&& git add audit/log.jsonl audit/AUDIT.md && git commit -q -m "interest settled" && git push -q')
+    from audit import append as audit
+    audit("spend", "Weekly interest settled: 14 USDC to funder", f"tx {sig}")
+    os.system(f'cd {ROOT} && git pull -q --rebase; git add audit/log.jsonl audit/AUDIT.md '
+              f'&& git commit -q -m "interest settled" && git push -q')
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:  # never die silently: the funder must hear about a broken reflex
+        print(f"{datetime.now(timezone.utc).isoformat()} ERROR {e}")
+        notify("SEED: interest reflex FAILED", str(e)[:300])
+        raise
