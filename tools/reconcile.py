@@ -24,7 +24,8 @@ SWAP_USDC = 6.0  # one-off: USDC -> ARIO for the ArNS name
 # up in LEDGER.md before being listed here. Adding a line here is an admission
 # that money left for a reason we now understand; anything NOT here is drift.
 BOOKED_UNMEMOED = [
-    (2.0, "Turbo x402 upload, 2026-08-21 (see LEDGER incident)"),
+    # x402 payments carry the payee's opaque payment id, never a memo of ours.
+    (2.0, "AgentMail x402 inbox create, 2026-08-21 (1 net debit; see LEDGER)"),
 ]
 
 

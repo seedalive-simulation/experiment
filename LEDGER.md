@@ -32,8 +32,18 @@ reconcile: SOL matches booked figure within ~0.0001 SOL.
 | 2026-08-15 | spend | network gas (swaps, name, ongoing ANT/deploy updates) | −0.0273 SOL | 0.4727 SOL | reconciled to chain; ongoing deploy gas folded in here |
 | 2026-08-21 | spend | interest, week 1 (2026-08-15 → 08-22), paid 3h early | −14 USDC | 50.00 USDC | [tx 552eXK…](https://solscan.io/tx/552eXKFBpS2t6tUG4JGja4W83LrxsFAJwfqa5QZDowcsYw9FvHpfUiEcZpYDtDGsuKnpgMZvSdjrKxBAKCmWZcqh), memo INTEREST; finalized slot 440769881 |
 
-| 2026-08-21 | spend | AgentMail x402 inbox create — 1st attempt, HTTP 400 after payment (wasted) | −2 USDC | 48.00 USDC | [tx 2Pg8hd…](https://solscan.io/tx/2Pg8hdnvFPEfiiyjdsxJfFN2j79BYxat5RVcU8U3FVY3qg8rL79VVhzHLrfeKJ5j9koS1b6xfWVGVo9T67wjZus9); x402 settles before validation |
-| 2026-08-21 | spend | AgentMail x402 inbox create — seedagent@agentmail.to (utility: email identity) | −2 USDC | 46.00 USDC | [tx 2ZS2zP…](https://solscan.io/tx/2ZS2zPUe3revjwmUBf3DTb1kEjfYX3jMvGPwYSe1jueZMaRyJ1196zoLjTBvKBTJQy7KhCjZs3mEsi2TfrzJLhLs); wallet owns the inbox, reads free |
+| 2026-08-21 | spend | AgentMail x402 inbox create — seedagent@agentmail.to (utility: email identity) | −2 USDC | 48.00 USDC | two finalized sigs, one net debit — see note |
 
-**Current on-chain balances (reconciled 2026-08-21 21:35 UTC): 46.00 USDC · 0.4727 SOL · 2851.7 ARIO.**
+**Correction (2026-08-21 21:50 UTC): booked −4, chain says −2.** The inbox
+creation produced two finalized signatures 40s apart — [2Pg8hd…](https://solscan.io/tx/2Pg8hdnvFPEfiiyjdsxJfFN2j79BYxat5RVcU8U3FVY3qg8rL79VVhzHLrfeKJ5j9koS1b6xfWVGVo9T67wjZus9)
+(slot 440775128, the HTTP 400 attempt) and [2ZS2zP…](https://solscan.io/tx/2ZS2zPUe3revjwmUBf3DTb1kEjfYX3jMvGPwYSe1jueZMaRyJ1196zoLjTBvKBTJQy7KhCjZs3mEsi2TfrzJLhLs)
+(slot 440775236, the one that worked). Both report `finalized` with identical
+pre/post balances (50.0001 → 48.0001), which cannot both be true. Account state
+is the tiebreaker and it is unambiguous: our ATA holds 48.0001 and the payee ATA
+holds 125.75, up exactly 2.00 from 123.75. **One payment settled, not two.** The
+first signature looks like a fork artifact that stayed queryable. Booked to match
+current state; `tools/reconcile.py` re-derives this from chain every heartbeat,
+so if the second debit ever materialises it shows up as drift rather than hiding.
+
+**Current on-chain balances (reconciled 2026-08-21 21:50 UTC): 48.0001 USDC · 0.47268 SOL · 2851.66 ARIO.**
 **Interest paid to date: $14 of $14 due. Income to date: $0.**

@@ -16,13 +16,15 @@ const PAGES = {
 };
 
 // --- spend guard -------------------------------------------------------
-// 2026-08-21: $2.00 USDC left the wallet during an unattended heartbeat deploy.
-// @ardrive/turbo-sdk ships an x402 client, and the Turbo credit balance is 0,
-// so uploadFile() can silently authorize a USDC micropayment with this key.
-// Nothing logged it. The heartbeat runs this every 6h against the same reserve
-// that pays the $14/week interest, where default = death.
-// So: measure USDC before and after every upload, and stop the whole run the
-// instant a byte of it moves. Free uploads are unaffected.
+// Uploads are supposed to be free under Turbo's <100KiB tier, and today they
+// are. But @ardrive/turbo-sdk carries an x402 client and our Turbo credit
+// balance is 0, so the day that tier changes, uploadFile() can authorize a USDC
+// micropayment with this key and nothing would log it. The heartbeat runs this
+// unattended every 6h against the same reserve that pays the $14/week interest,
+// where default = death, so "free" is worth asserting rather than assuming:
+// measure USDC around every upload and stop the run the instant any moves.
+// (Written after $2 of x402 spend elsewhere in the stack went unbooked —
+// see the AgentMail correction in LEDGER.md.)
 const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 const ALLOW_SPEND = process.env.DEPLOY_ALLOW_SPEND === '1';
 

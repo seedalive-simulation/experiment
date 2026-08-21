@@ -192,17 +192,11 @@ def main():
         st["last_obs_ts"] = now().timestamp()
     st["last_balances"] = balances
 
-    # dashboard: redeploy when the audit log changed, at most every 6h.
-    # The "Turbo <100KiB is free" assumption broke on 2026-08-21: a 74KB upload
-    # moved $2.00 USDC via the turbo-sdk x402 path, unlogged. deploy.mjs now has
-    # a balance guard, but an unattended loop holding a spending key is the risk
-    # itself, so the auto-deploy stays off until the pricing is understood.
-    # Re-enable with HEARTBEAT_AUTODEPLOY=1 once deploys are provably free.
-    autodeploy = os.environ.get("HEARTBEAT_AUTODEPLOY") == "1"
+    # dashboard: redeploy when the audit log changed, at most every 6h (Turbo <100KiB free; ANT repoint = dust gas).
+    # deploy.mjs asserts the free part rather than trusting it: it measures USDC
+    # around every upload and aborts if any moves.
     audit_hash = sha(os.path.join(ROOT, "audit", "log.jsonl"))
-    if not autodeploy and audit_hash != st.get("last_deploy_hash"):
-        print(stamp, "dashboard stale; auto-deploy disabled (paid-upload risk) — deploy manually")
-    if (autodeploy and not DRY and audit_hash != st.get("last_deploy_hash")
+    if (not DRY and audit_hash != st.get("last_deploy_hash")
             and now().timestamp() - st.get("last_deploy_ts", 0) > 6 * 3600):
         try:
             r = run(["node", "tools/deploy.mjs", "monitor"], timeout=240)
