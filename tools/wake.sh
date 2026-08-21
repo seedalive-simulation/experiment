@@ -84,6 +84,8 @@ had to earn. Log every action via tools/audit.py, commit and push (EXPLICIT file
 paths only, never git add -A). If you need the funder, use tools/signal_human.py. \
 Stop when the queue is handled." \
   --output-format json \
+  --max-budget-usd "${BRAIN_MAX_USD:-1.50}" \
+  --max-turns 60 \
   --permission-mode acceptEdits \
   --allowedTools "Bash Read Write Edit" > /tmp/wake_out.json 2>>wake.err
 

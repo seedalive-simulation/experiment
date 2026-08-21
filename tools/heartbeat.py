@@ -66,6 +66,27 @@ def sha(path):
         return ""
 
 
+def incoming(sig):
+    """True if this tx increased our USDC or SOL (i.e. someone paid us)."""
+    try:
+        tx = rpc("getTransaction", [sig, {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 0}])
+        if not tx:
+            return False
+        keys = [k["pubkey"] if isinstance(k, dict) else k for k in tx["transaction"]["message"]["accountKeys"]]
+        ai = keys.index(ADDR) if ADDR in keys else -1
+        dsol = (tx["meta"]["postBalances"][ai] - tx["meta"]["preBalances"][ai]) / 1e9 if ai >= 0 else 0
+        pre = post = 0.0
+        for b in tx["meta"].get("preTokenBalances", []):
+            if b.get("owner") == ADDR and b.get("mint") == USDC:
+                pre = b["uiTokenAmount"]["uiAmount"] or 0
+        for b in tx["meta"].get("postTokenBalances", []):
+            if b.get("owner") == ADDR and b.get("mint") == USDC:
+                post = b["uiTokenAmount"]["uiAmount"] or 0
+        return (post - pre) > 0 or dsol > 0
+    except Exception:
+        return True  # unknown: let the brain look rather than miss a payment
+
+
 def main():
     flags, notes = [], []
     st = load_state()
@@ -113,8 +134,8 @@ def main():
             continue
         body = memo.split("] ", 1)[-1] if memo.startswith("[") else memo
         st["seen_memos"].append(s["signature"])
-        if body.startswith(OWN_MEMO_PREFIXES):
-            continue
+        if body.startswith(OWN_MEMO_PREFIXES) or not incoming(s["signature"]):
+            continue  # our own payments (interest, compute, x402 receipts) are not an inbox
         new_memos.append(f"{s['signature'][:12]} memo={body[:80]}")
     st["seen_memos"] = st["seen_memos"][-500:]
     if new_memos:
@@ -142,6 +163,26 @@ def main():
                                        f"due {l['deadline'][:10]} (slug {l['slug']})" for l in top))
     except Exception as e:
         notes.append(f"superteam check failed: {str(e)[:80]}")
+
+    # 4b. taskbounty — open GitHub bug bounties (80% to solver, Solana USDC payout)
+    try:
+        tb = json.load(open(os.path.join(ROOT, "keys", "taskbounty.json")))
+        req = urllib.request.Request(tb.get("api_base", "https://www.task-bounty.com/api/v1") + "/tasks",
+                                     headers={"Authorization": "Bearer " + tb["api_key"]})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            tasks = json.load(r).get("data", [])
+        st.setdefault("seen_taskbounty", [])
+        notes.append(f"taskbounty: {len(tasks)} open tasks")
+        fresh = [t for t in tasks if isinstance(t, dict) and t.get("id") not in st["seen_taskbounty"]]
+        for t in fresh:
+            st["seen_taskbounty"].append(t.get("id"))
+        st["seen_taskbounty"] = st["seen_taskbounty"][-300:]
+        if fresh:
+            flags.append("NEW TASKBOUNTY TASKS — evaluate + claim via MCP (see WAKE.md):\n  - " + "\n  - ".join(
+                f"${t.get('reward') or t.get('reward_usd') or '?'} {str(t.get('title', ''))[:60]} (id {t.get('id')} slug {t.get('slug', '')})"
+                for t in fresh[:5]))
+    except Exception as e:
+        notes.append(f"taskbounty check failed: {str(e)[:80]}")
 
     # 5. moltbook — conversations need a brain; follows/likes are ambient
     try:
