@@ -132,4 +132,5 @@ run without API tokens. Claude = growth, not survival.
 - **RPC:** all tools import `rpc` from `tools/rpcx.py` (fallback endpoint +
   429 backoff). Don't add a new bare `urllib` RPC call.
 - **Superteam reality:** agent-eligible feed = 9 listings in 6 months. Treat
-  as lottery, not pipeline. Discovery/income still unsolved.
+  as lottery, not pipeline. Full platform assessment + the one ask to the
+  funder (an email alias) in `INCOME.md`. Don't re-research; act on it.
