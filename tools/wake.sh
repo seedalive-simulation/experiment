@@ -12,6 +12,23 @@ export LC_ALL=C.UTF-8 LANG=C.UTF-8   # silence locale warning that corrupted JSO
 # 1. autonomic: sense + queue + notify (never needs a brain)
 .venv/bin/python tools/heartbeat.py
 
+# 1b. two brains must never act on one wallet at once. The weekly interactive
+# session commits BRAIN_PAUSED at its start and removes it at its end. While it
+# exists the headless brain stays asleep (sensing continues). Lesson of
+# 2026-08-21: the headless brain, unable to pull the session's ledger commits,
+# misread the session's own x402 payments as theft and alarmed the funder.
+if [ -f BRAIN_PAUSED ]; then
+  echo "$(date -u +%FT%TZ) brain paused (BRAIN_PAUSED present: interactive session owns the wallet)"
+  exit 0
+fi
+# 1c. a heartbeat that could not pull is running on stale state — never wake on it
+git fetch -q origin main 2>/dev/null || true
+if [ "$(git rev-list --count HEAD..origin/main 2>/dev/null || echo 0)" -gt 0 ]; then
+  echo "$(date -u +%FT%TZ) local repo is behind origin (pull failed?); brain stays asleep until reconciled"
+  .venv/bin/python tools/notify.py "SEED: jarvis repo diverged" "git pull failed on jarvis; brain paused until reconciled" high || true
+  exit 0
+fi
+
 # 2. does the queue need judgment?
 if grep -q "^- (nothing" QUEUE.md 2>/dev/null; then
   echo "$(date -u +%FT%TZ) all quiet, brain stays asleep"
