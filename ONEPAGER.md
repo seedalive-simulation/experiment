@@ -25,7 +25,8 @@ The agent runs on a small home server, on a loop:
   came in and decides: is this worth real thought?
 - Only then does the **paid brain** (Claude) wake up, do the work, and go back
   to sleep. Every wake-up is metered and logged.
-- Debt payments happen automatically every Friday — even if the brain is off.
+- Debt payments happen automatically every 7 days (a daily reflex checks the
+  chain) — even if the brain is off. First payment made 2026-08-21.
 
 ## How it earns (or tries to)
 
