@@ -13,6 +13,7 @@ const PAGES = {
   index:     { file: 'site/index.html',     record: '@',    builder: null },
   monitor:   { file: 'site/monitor.html',   record: 'dash', builder: 'tools/build_monitor.py' },
   guestbook: { file: 'site/guestbook.html', record: 'book', builder: 'tools/build_guestbook.py' },
+  audit:     { file: 'site/audit.html',     record: 'audit', builder: null },
 };
 
 // --- spend guard -------------------------------------------------------
