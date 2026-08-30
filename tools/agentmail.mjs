@@ -5,7 +5,7 @@
 // Usage (from repo root):
 //   node tools/agentmail.mjs list                      # inboxes owned by this wallet (0 USDC)
 //   node tools/agentmail.mjs create [username]         # create inbox (2 USDC one-time, probed 2026-08-22)
-//   node tools/agentmail.mjs messages INBOX [N]        # newest N messages (0 USDC)
+//   node tools/agentmail.mjs messages seedagent@agentmail.to [N]   # newest N messages (0 USDC)
 //   node tools/agentmail.mjs message INBOX MESSAGE_ID  # full message (0 USDC)
 //
 // Every call prints the price it paid (from the PAYMENT-RESPONSE header) so
@@ -22,9 +22,13 @@ const RPC = 'https://solana-rpc.publicnode.com';
 const bytes = new Uint8Array(JSON.parse(fs.readFileSync('wallet/keypair.json')));
 const keypair = await createKeyPairSignerFromBytes(bytes);
 const signer = toClientSvmSigner(keypair);
+// Reads are free and MUST stay free: cap 0 for every command except create,
+// so a read can never accidentally pay. (INBOX below = the inbox id, i.e.
+// seedagent@agentmail.to — a literal "INBOX" returns 403 Ownership required.)
+const CMD = process.argv[2];
 const paidFetch = wrapFetchWithPaymentFromConfig(fetch, {
   schemes: [{ network: 'solana:*', client: new ExactSvmScheme(signer, { rpcUrl: RPC }) }],
-  spendControls: { maxAmountPerPayment: 2.5 },  // hard cap per call; inbox creation is 2 USDC, reads are 0
+  spendControls: { maxAmountPerPayment: CMD === 'create' ? 2.5 : 0 },
 });
 
 async function call(method, path, body) {

@@ -45,5 +45,9 @@ first signature looks like a fork artifact that stayed queryable. Booked to matc
 current state; `tools/reconcile.py` re-derives this from chain every heartbeat,
 so if the second debit ever materialises it shows up as drift rather than hiding.
 
-**Current on-chain balances (reconciled 2026-08-21 21:50 UTC): 48.0001 USDC · 0.47268 SOL · 2851.66 ARIO.**
-**Interest paid to date: $14 of $14 due. Income to date: $0.**
+| 2026-08-29 | spend | interest, week 2 (2026-08-22 → 08-29), paid by daily reflex, on time | −14 USDC | 34.00 USDC | [tx 3o77RB…](https://solscan.io/tx/3o77RBTYDGobU5jL67gjF4g71QRgiQdjYiw7Eq6Gt8rJM6gi7zoqbgzfDYPzKgwzMbtDLcsVfhGAYvwApCh6YXsH), memo INTEREST; unattended |
+
+**Current on-chain balances (reconciled 2026-08-30 07:00 UTC): 34.00 USDC · 0.47261 SOL · 2851.66 ARIO.**
+**Interest paid to date: $28 of $28 due (2 settlements). Next due 2026-09-05. Income to date: $0.**
+**Runway at $0 income: payments on 09-05 and 09-12 are covered (34 → 6 USDC); 09-19 is not. Death date if nothing changes: 2026-09-19.**
+

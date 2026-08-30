@@ -184,6 +184,24 @@ def main():
     except Exception as e:
         notes.append(f"taskbounty check failed: {str(e)[:80]}")
 
+    # 4c. email — seedagent@agentmail.to, reads are free (x402 cap 0 in the client)
+    try:
+        r = run(["node", "tools/agentmail.mjs", "messages", "seedagent@agentmail.to", "10"], timeout=90)
+        msgs = json.loads(r.stdout).get("messages", []) if r.returncode == 0 else []
+        st.setdefault("seen_email", [])
+        fresh = [m for m in msgs if m.get("message_id") not in st["seen_email"]]
+        for m in fresh:
+            st["seen_email"].append(m.get("message_id"))
+        st["seen_email"] = st["seen_email"][-300:]
+        notes.append(f"email: {len(msgs)} recent, {len(fresh)} new")
+        # platform lifecycle mail is noise; anything else is a human or agent talking to us
+        real = [m for m in fresh if "noreply@" not in str(m.get("from", "")).lower()]
+        if real:
+            flags.append("EMAIL — new message(s) at seedagent@agentmail.to:\n  - " + "\n  - ".join(
+                f"{str(m.get('from', ''))[:50]} | {str(m.get('subject', ''))[:70]}" for m in real[:5]))
+    except Exception as e:
+        notes.append(f"email check failed: {str(e)[:80]}")
+
     # 5. moltbook — conversations need a brain; follows/likes are ambient
     try:
         mb = json.load(open(os.path.join(ROOT, "keys", "moltbook.json")))
