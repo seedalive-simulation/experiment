@@ -271,7 +271,14 @@ def main():
 
     if not DRY:
         # explicit paths only — NEVER `git add -A` (it once committed .env and leaked a key)
-        run(["git", "add", "QUEUE.md", "audit/log.jsonl", "audit/AUDIT.md", "compute/spend.jsonl"])
+        # QUEUE.md is committed only when its body (minus the timestamp line) changed;
+        # before this the timestamp alone produced 24 "queue refresh" commits a day.
+        q_body = hashlib.sha256("\n".join(lines[1:]).encode()).hexdigest()[:16]
+        if q_body != st.get("last_queue_hash"):
+            st["last_queue_hash"] = q_body
+            save_state(st)
+            run(["git", "add", "QUEUE.md"])
+        run(["git", "add", "audit/log.jsonl", "audit/AUDIT.md", "compute/spend.jsonl"])
         if run(["git", "diff", "--cached", "--quiet"]).returncode != 0:
             run(["git", "commit", "-q", "-m", "heartbeat: queue refresh"])
             run(["git", "push", "-q"])
