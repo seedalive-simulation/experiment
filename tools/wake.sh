@@ -21,8 +21,14 @@ if [ -f BRAIN_PAUSED ]; then
   echo "$(date -u +%FT%TZ) brain paused (BRAIN_PAUSED present: interactive session owns the wallet)"
   exit 0
 fi
-# 1c. a heartbeat that could not pull is running on stale state — never wake on it
-git fetch -q origin main 2>/dev/null || true
+# 1c. a heartbeat that could not pull is running on stale state — never wake on it.
+# The fetch must succeed: if it fails we cannot know whether an interactive
+# session has committed BRAIN_PAUSED, and "not behind origin" is then a lie.
+# Unknown remote state is treated exactly like a paused brain.
+if ! git fetch -q origin main 2>/dev/null; then
+  echo "$(date -u +%FT%TZ) git fetch failed; remote state unknown, brain stays asleep"
+  exit 0
+fi
 if [ "$(git rev-list --count HEAD..origin/main 2>/dev/null || echo 0)" -gt 0 ]; then
   echo "$(date -u +%FT%TZ) local repo is behind origin (pull failed?); brain stays asleep until reconciled"
   .venv/bin/python tools/notify.py "SEED: jarvis repo diverged" "git pull failed on jarvis; brain paused until reconciled" high || true

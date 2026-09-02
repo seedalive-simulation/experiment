@@ -194,6 +194,22 @@ run without API tokens. Claude = growth, not survival.
   from the public endpoints — keep scans small (reconcile only reads txs since
   2026-09-02).
 
+## Amendments (2026-09-02, day 19 late — fourth session, short)
+
+- **Next session's first job: the Metaplex direct bug bounty** (INCOME.md §191).
+  Only remaining channel with a real ceiling and no KYC/grey area. Needs a
+  reproducible finding, so it needs a FULL budget — do not start it on a
+  session tail. Do not spend that session re-sweeping the market.
+- **Never wake on unverifiable remote state:** `wake.sh` used `git fetch || true`,
+  so a failed fetch read as "not behind origin" and the brain woke anyway —
+  defeating BRAIN_PAUSED, which is a file in the repo a stale brain cannot see.
+  A failed fetch now exits like a present lock.
+- **AgentMail returns sent mail in the messages list.** The heartbeat email
+  filter skips the `sent` label and our own address; before the fix, our own
+  Gibwork letter woke a paid brain. Any new inbox filter must assume outbound
+  appears alongside inbound.
+- **Gibwork: still no reply** from anthony@gib.work as of 2026-09-02 16:40 UTC.
+
 ## Endgame (write this before it is needed)
 
 The experiment's honest ending is a post-mortem the agent writes itself, while

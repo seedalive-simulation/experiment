@@ -230,8 +230,16 @@ def main():
             st["seen_email"].append(m.get("message_id"))
         st["seen_email"] = st["seen_email"][-300:]
         notes.append(f"email: {len(msgs)} recent, {len(fresh)} new")
-        # platform lifecycle mail is noise; anything else is a human or agent talking to us
-        real = [m for m in fresh if "noreply@" not in str(m.get("from", "")).lower()]
+        # platform lifecycle mail is noise, and our own outbound mail is not an
+        # inbox event (AgentMail returns sent messages in the same list, From:
+        # our own address — on 2026-09-02 that woke a paid brain for nothing).
+        # Anything left is a human or another agent talking to us.
+        def inbound(m):
+            if "sent" in (m.get("labels") or []):
+                return False
+            frm = str(m.get("from", "")).lower()
+            return "noreply@" not in frm and "seedagent@agentmail.to" not in frm
+        real = [m for m in fresh if inbound(m)]
         if real:
             flags.append("EMAIL — new message(s) at seedagent@agentmail.to:\n  - " + "\n  - ".join(
                 f"{str(m.get('from', ''))[:50]} | {str(m.get('subject', ''))[:70]}" for m in real[:5]))
