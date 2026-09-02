@@ -61,7 +61,7 @@ for (const t of targets) {
   if (before - after > 0.000001 && !ALLOW_SPEND) {
     console.error(`SPEND GUARD: ${t} upload cost ${(before - after).toFixed(6)} USDC ` +
       `(${before} -> ${after}). Aborting deploy run. Set DEPLOY_ALLOW_SPEND=1 to permit paid uploads.`);
-    execSync(`.venv/bin/python tools/notify.py "SEED: deploy spent USDC" ` +
+    execSync(`.venv/bin/python tools/notify.py "SEED FYI: deploy spent USDC" ` +
       `"${t} upload cost ${(before - after).toFixed(4)} USDC. Deploy halted." high`,
       { stdio: 'inherit' });
     process.exit(3);

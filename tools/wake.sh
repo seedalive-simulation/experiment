@@ -31,7 +31,7 @@ if ! git fetch -q origin main 2>/dev/null; then
 fi
 if [ "$(git rev-list --count HEAD..origin/main 2>/dev/null || echo 0)" -gt 0 ]; then
   echo "$(date -u +%FT%TZ) local repo is behind origin (pull failed?); brain stays asleep until reconciled"
-  .venv/bin/python tools/notify.py "SEED: jarvis repo diverged" "git pull failed on jarvis; brain paused until reconciled" high || true
+  .venv/bin/python tools/notify.py "SEED ACTION: jarvis repo diverged" "git pull failed on jarvis; brain paused until reconciled" high || true
   exit 0
 fi
 

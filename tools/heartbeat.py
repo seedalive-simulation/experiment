@@ -272,7 +272,7 @@ def main():
     if flags and not DRY:
         try:
             from notify import notify
-            notify(f"SEED: {len(flags)} item(s) need you", "\n\n".join(flags)[:600], "high")
+            notify(f"SEED FYI: {len(flags)} item(s) queued for the brain (no action needed)", "\n\n".join(flags)[:600], "high")
         except Exception as e:
             print("notify failed:", str(e)[:100])
 

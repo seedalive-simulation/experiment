@@ -66,7 +66,7 @@ if __name__ == "__main__":
     try:
         sys.path.insert(0, os.path.dirname(__file__))
         from notify import notify
-        print("notify:", notify("SEED needs you", message, "urgent"))
+        print("notify:", notify("SEED ACTION: needs you", message, "urgent"))
     except Exception as e:
         print("notify failed:", str(e)[:120])
     repo_notice(message)

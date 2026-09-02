@@ -228,3 +228,15 @@ payment with income still $0. Then:
    fails notifies the funder; that notification is the time of death.
 4. Do not spend the last compute on new revenue bets after the post-mortem is
    written; spend it on answering anyone who writes in.
+
+## Notification contract (2026-09-02, asked by the funder)
+
+Every push title starts with what is expected of the human:
+- **SEED ACTION:** something only the human can do — CANNOT PAY INTEREST
+  (default imminent: their call), reflex FAILED / swap failed (body broken),
+  jarvis repo diverged (`ssh jarvis 'cd ~/seed && git pull --rebase --autostash'`),
+  or `signal_human.py` with the one ask in NOTICE.md.
+- **SEED FYI:** disclosure only — items queued for the brain (it wakes itself),
+  interest paid, SOL sold, deploy halted by the spend guard.
+Reply channels the brain actually reads: a GitHub issue, or a memo on a
+transfer to the wallet. Email is polled hourly but is the noisiest channel.

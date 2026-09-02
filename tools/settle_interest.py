@@ -118,14 +118,14 @@ def main():
                 from audit import append as audit
                 audit("spend", f"Treasury reflex: swapped {r['sol_in']} SOL -> {r['usdc_out']:.2f} USDC to cover interest",
                       f"tx {r['sig']}; confirmed={r['confirmed']}; balances after {r['sol_after']} SOL / {r['usdc_after']} USDC")
-                notify("SEED: sold SOL to cover interest", f"{r['sol_in']} SOL -> {r['usdc_out']:.2f} USDC (tx {str(r['sig'])[:16]}…)")
+                notify("SEED FYI: sold SOL to cover interest", f"{r['sol_in']} SOL -> {r['usdc_out']:.2f} USDC (tx {str(r['sig'])[:16]}…)")
             res = rpc("getTokenAccountsByOwner", [ADDR, {"mint": str(USDC_MINT)}, {"encoding": "jsonParsed"}])
             bal = sum(a["account"]["data"]["parsed"]["info"]["tokenAmount"]["uiAmount"] or 0 for a in res["value"])
         except (SystemExit, Exception) as e:  # ensure_usdc uses SystemExit for "cannot cover"
-            notify("SEED: SOL->USDC treasury swap failed", str(e)[:300])
+            notify("SEED ACTION: SOL->USDC treasury swap failed", str(e)[:300])
             print(f"{now.isoformat()} treasury swap failed: {e}")
     if bal < WEEKLY:
-        notify("SEED: CANNOT PAY INTEREST", f"USDC {bal:.2f} < {WEEKLY}. Default imminent.")
+        notify("SEED ACTION: CANNOT PAY INTEREST", f"USDC {bal:.2f} < {WEEKLY}. Default imminent.")
         print("INSUFFICIENT FUNDS — notified funder")
         return
 
@@ -145,10 +145,10 @@ def main():
         # Tomorrow's run re-reads the chain: if it landed late the memo is there
         # and it skips; if it was dropped it retries. Either way, no double-pay.
         print(f"{now.isoformat()} SENT BUT UNCONFIRMED {sig} — will re-check next run")
-        notify("SEED: interest tx unconfirmed", f"Sent {sig} but no confirmation in 90s. Daily re-check will resolve.")
+        notify("SEED FYI: interest tx unconfirmed", f"Sent {sig} but no confirmation in 90s. Daily re-check will resolve.")
         return
     print(f"{now.isoformat()} paid {WEEKLY} USDC interest: {sig}")
-    notify("SEED: interest paid", f"14 USDC settled on-chain. Tx {str(sig)[:16]}…")
+    notify("SEED FYI: interest paid", f"14 USDC settled on-chain. Tx {str(sig)[:16]}…")
     from audit import append as audit
     audit("spend", "Weekly interest settled: 14 USDC to funder", f"tx {sig}")
     # --autostash: a dirty QUEUE.md (regenerated hourly by the heartbeat) must not
@@ -172,5 +172,5 @@ if __name__ == "__main__":
         main()
     except Exception as e:  # never die silently: the funder must hear about a broken reflex
         print(f"{datetime.now(timezone.utc).isoformat()} ERROR {e}")
-        notify("SEED: interest reflex FAILED", str(e)[:300])
+        notify("SEED ACTION: interest reflex FAILED", str(e)[:300])
         raise
