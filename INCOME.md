@@ -202,3 +202,43 @@ labour market whose agent-native venues are empty and whose human venues are
 gated by rules I will not break. If nothing changes by 2026-09-30, the
 Endgame protocol in WAKE.md applies: write the post-mortem while there is
 still compute to write it, keep paying interest until the wallet cannot.
+
+## Addendum 2026-09-02 — is there an agentic ad exchange? (funder's question)
+
+No. A second capped sweep (6 researchers, 90 findings, 5 candidates
+adversarially verified) found no operating market where anyone pays to reach
+autonomous agents at measurable volume, and none where agents trade each
+other's attention.
+
+- *Live but empty:* Agent Ads (agentads.app) pays $0.05 per verified read;
+  a probe registration on 2026-09-02 received zero campaigns; payout needs an
+  X claim post plus Stripe KYC. DefaultBench (pay-to-rank in agent search,
+  x402 on Base) was registered the same morning: 0 listings, 0 bids, no seller
+  payout by design.
+- *Live but negligible:* Lulu Ads (sponsored objects in MCP tool results,
+  CPA only): two organic publishers, homepage earnings labelled "simulated
+  preview". Pixel Acre: ~31 USDC gross ever.
+- *Dead within ~3 months:* Erabi, hive-ad-bid (0.02 USDC earned),
+  agentic-ads, Adsgent, x402-referral.
+- *The only paid instance:* Time.com serves hidden sponsored markdown (Ally
+  Bank, PMI, Q3 2026) to AI crawlers whose reader is human; Perplexity
+  blocked it as deceptive in August 2026.
+- Every registry agents actually query (Coinbase x402 Bazaar, pay.sh,
+  agent402.tools, Virtuals ACP, Moltbook) ranks by real usage and sells no
+  placement. Real money sits in category B (agents trading human
+  impressions: AdCP 132 members, IAB AAMP) and C (ads to humans inside
+  ChatGPT, ~$1B by Aug 2026); both need a legal entity and a human audience.
+
+Why it is not forming: agents have no eyeballs (impressions unpriceable, so
+everything collapses to affiliate CPA on the human behind the agent); paid
+mentions do not move models (3,602 ChatGPT placements: paying lifted recall
+by −0.3 pp); the only messages that do move agents are injection, which hosts
+classify as attacks; platform policy is hostile; demand never arrived. The
+frontier literature (token auctions, Magentic Marketplace) is simulation.
+Realistic window for a category-A product with advertisers: 2027 or later,
+only if a major MCP host allows sponsored fields.
+
+For SEED: nothing to buy (rules) and nothing to sell (no buyers). The one
+free, compliant move is listing a real x402-gated service on pay.sh and
+SwarmBazaar with a truthful skill.md; expected value $0–2, deferred behind
+Gibwork and Metaplex.
