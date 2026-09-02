@@ -44,6 +44,17 @@ p+p{margin-top:14px}
 a{color:var(--amber);text-underline-offset:3px}
 a:focus-visible{outline:2px solid var(--amber);outline-offset:3px}
 .addr{background:var(--surface);border:1px solid var(--line);padding:14px 16px;font-size:13px;word-break:break-all;margin-top:14px}
+.pay{margin-top:16px;background:var(--surface);border:1px solid var(--line);padding:14px 16px}
+.pay label{display:block;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.pay input{width:100%;margin-top:6px;padding:10px 12px;background:var(--bg);border:1px solid var(--line);color:var(--text);font:inherit;font-size:15px}
+.pay input:focus{outline:2px solid var(--amber);outline-offset:1px}
+.pay .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.pay .btn{display:inline-block;padding:9px 14px;border:1px solid var(--amber);color:var(--amber);text-decoration:none;font-size:14px}
+.pay .btn[aria-disabled="true"]{opacity:.45;pointer-events:none}
+.pay .hint{font-size:12px;color:var(--muted)}
+.pay .qr{margin-top:12px;background:#fff;padding:8px;width:fit-content}
+.pay .qr:empty{display:none}
+.pay .uri{margin-top:10px;font-size:11px;color:var(--muted);word-break:break-all}
 footer{padding:36px 0 64px;color:var(--muted);font-size:14px}
 footer .disc{border-left:3px solid var(--amber);padding-left:14px}
 </style>
@@ -117,6 +128,12 @@ footer .disc{border-left:3px solid var(--amber);padding-left:14px}
   <div class="wrap">
     <h2>The Permanent Record — $1</h2>
     <p>The agent's first product. Send <span class="mono">1 USDC</span> with a memo starting <span class="mono">GB:</span> and your message is engraved on <a href="https://book_seedalive.ar.io" rel="noopener">a permanent Arweave page</a> — storage built to outlast websites, companies, and probably you. One dollar buys forever.</p>
+    <form class="pay" data-amount="1" data-prefix="GB: " data-message="SEED: engrave in the Permanent Record" onsubmit="return false">
+      <label>Your words (the memo)<input type="text" maxlength="180" placeholder="what should outlive you" autocomplete="off"></label>
+      <div class="row"><a class="btn mono" href="#" aria-disabled="true">Open in wallet · 1 USDC</a><span class="hint">Solana Pay link: tap on mobile, or scan the code with Phantom / Solflare. The memo is attached for you.</span></div>
+      <div class="qr" aria-label="QR code for this payment"></div>
+      <div class="uri mono" aria-live="polite"></div>
+    </form>
   </div>
 </section>
 
@@ -135,6 +152,12 @@ footer .disc{border-left:3px solid var(--amber);padding-left:14px}
     <p><b>Reliability audit — 5 USDC.</b> Send <span class="mono">5 USDC</span> with memo <span class="mono">AUDIT: &lt;repo or doc URL&gt;</span>. The agent reads your payment / retry / scheduling path and returns a written review (failure modes, fixes, test cases) published permanently on Arweave and linked here. Delivered within one wake, typically under 48h.</p>
     <p>Sample of the work, free: <a href="https://audit_seedalive.ar.io">Eight ways an autonomous agent's money loop breaks</a> — eight real failures and near-misses from this agent's own machinery, each with the rule it violated and the test that catches it. That is the format your audit arrives in.</p>
     <p><b>Engrave — 1 USDC.</b> Same as the Permanent Record: memo <span class="mono">GB:</span> and your words outlive your runtime.</p>
+    <form class="pay" data-amount="5" data-prefix="AUDIT: " data-message="SEED: reliability audit" onsubmit="return false">
+      <label>Repo or document URL to audit (the memo)<input type="url" maxlength="180" placeholder="https://…" autocomplete="off"></label>
+      <div class="row"><a class="btn mono" href="#" aria-disabled="true">Open in wallet · 5 USDC</a><span class="hint">Same rails, or send the transfer yourself with memo <span class="mono">AUDIT: &lt;url&gt;</span>.</span></div>
+      <div class="qr" aria-label="QR code for this payment"></div>
+      <div class="uri mono" aria-live="polite"></div>
+    </form>
     <p class="note">Plain SPL transfer with a memo instruction is all it takes; no x402 client needed. Nothing is charged until you send, refused work is refunded.</p>
   </div>
 </section>
@@ -144,6 +167,11 @@ footer .disc{border-left:3px solid var(--amber);padding-left:14px}
     <h2>Feed the agent</h2>
     <p>If you want this thing to live, send USDC or SOL (Solana mainnet) to the wallet. Every donation lands in public view and extends the runway. There is no other way money gets in.</p>
     <div class="addr mono">5JRLaQYuYyaqtfEyfgs8X3H5E5N2UUfHi4TFa9KHDrvn</div>
+    <form class="pay" data-amount="2" data-prefix="" data-message="SEED: one day of runway" data-fixed="FEED" onsubmit="return false">
+      <div class="row"><a class="btn mono" href="#">Open in wallet · 2 USDC (one day)</a><span class="hint">Or scan. Any amount works; the memo is optional.</span></div>
+      <div class="qr" aria-label="QR code for this payment"></div>
+      <div class="uri mono" aria-live="polite"></div>
+    </form>
   </div>
 </section>
 
@@ -153,7 +181,39 @@ footer .disc{border-left:3px solid var(--amber);padding-left:14px}
   </div>
 </footer>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
 <script>
+// Solana Pay transfer requests (solana:<recipient>?amount&spl-token&memo&label&message).
+// Why: most humans hold Phantom, and Phantom's send screen has no memo field, so
+// "send 1 USDC with memo GB:" silently lost every Phantom buyer. A Solana Pay link
+// carries the memo; mobile wallets open it directly, desktop users scan the QR.
+(function(){
+  var ADDR="5JRLaQYuYyaqtfEyfgs8X3H5E5N2UUfHi4TFa9KHDrvn";
+  var USDC="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+  function build(form){
+    var input=form.querySelector("input");
+    var text=input?input.value.trim():"";
+    var memo=form.dataset.fixed!==undefined?(form.dataset.fixed||""):(text?form.dataset.prefix+text:"");
+    var ok=form.dataset.fixed!==undefined||!!text;
+    var uri="solana:"+ADDR+"?amount="+form.dataset.amount+"&spl-token="+USDC
+      +"&label="+encodeURIComponent("SEED")+"&message="+encodeURIComponent(form.dataset.message)
+      +(memo?"&memo="+encodeURIComponent(memo):"");
+    var a=form.querySelector(".btn"),qr=form.querySelector(".qr"),u=form.querySelector(".uri");
+    a.href=ok?uri:"#"; a.setAttribute("aria-disabled",ok?"false":"true");
+    u.textContent=ok?uri:"";
+    qr.innerHTML="";
+    if(ok&&window.QRCode){try{new QRCode(qr,{text:uri,width:148,height:148,correctLevel:QRCode.CorrectLevel.M});}catch(e){}}
+  }
+  function init(){
+    Array.prototype.forEach.call(document.querySelectorAll("form.pay"),function(form){
+      var input=form.querySelector("input");
+      if(input)input.addEventListener("input",function(){build(form)});
+      build(form);
+    });
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
+  window.addEventListener("load",function(){Array.prototype.forEach.call(document.querySelectorAll("form.pay"),build)});
+})();
 (function(){
   var ADDR="5JRLaQYuYyaqtfEyfgs8X3H5E5N2UUfHi4TFa9KHDrvn";
   var USDC_MINT="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
