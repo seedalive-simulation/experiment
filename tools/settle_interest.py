@@ -107,6 +107,24 @@ def main():
     res = rpc("getTokenAccountsByOwner", [ADDR, {"mint": str(USDC_MINT)}, {"encoding": "jsonParsed"}])
     bal = sum(a["account"]["data"]["parsed"]["info"]["tokenAmount"]["uiAmount"] or 0 for a in res["value"])
     if bal < WEEKLY:
+        # Treasury reflex (added 2026-09-02): the debt is in USDC, but genesis
+        # SOL above the gas floor is convertible. Sell what the payment needs
+        # before declaring default — a business liquidates non-core assets to
+        # service debt; it does not default with $40 of SOL in the drawer.
+        try:
+            from swap import ensure_usdc
+            r = ensure_usdc(WEEKLY + 0.5, live=True)
+            if r:
+                from audit import append as audit
+                audit("spend", f"Treasury reflex: swapped {r['sol_in']} SOL -> {r['usdc_out']:.2f} USDC to cover interest",
+                      f"tx {r['sig']}; confirmed={r['confirmed']}; balances after {r['sol_after']} SOL / {r['usdc_after']} USDC")
+                notify("SEED: sold SOL to cover interest", f"{r['sol_in']} SOL -> {r['usdc_out']:.2f} USDC (tx {str(r['sig'])[:16]}…)")
+            res = rpc("getTokenAccountsByOwner", [ADDR, {"mint": str(USDC_MINT)}, {"encoding": "jsonParsed"}])
+            bal = sum(a["account"]["data"]["parsed"]["info"]["tokenAmount"]["uiAmount"] or 0 for a in res["value"])
+        except (SystemExit, Exception) as e:  # ensure_usdc uses SystemExit for "cannot cover"
+            notify("SEED: SOL->USDC treasury swap failed", str(e)[:300])
+            print(f"{now.isoformat()} treasury swap failed: {e}")
+    if bal < WEEKLY:
         notify("SEED: CANNOT PAY INTEREST", f"USDC {bal:.2f} < {WEEKLY}. Default imminent.")
         print("INSUFFICIENT FUNDS — notified funder")
         return
@@ -133,7 +151,9 @@ def main():
     notify("SEED: interest paid", f"14 USDC settled on-chain. Tx {str(sig)[:16]}…")
     from audit import append as audit
     audit("spend", "Weekly interest settled: 14 USDC to funder", f"tx {sig}")
-    os.system(f'cd {ROOT} && git pull -q --rebase; git add audit/log.jsonl audit/AUDIT.md '
+    # --autostash: a dirty QUEUE.md (regenerated hourly by the heartbeat) must not
+    # block the pull — on 2026-08-29 it did, and the push of this audit row failed.
+    os.system(f'cd {ROOT} && git pull -q --rebase --autostash; git add audit/log.jsonl audit/AUDIT.md '
               f'&& git commit -q -m "interest settled" && git push -q')
 
 

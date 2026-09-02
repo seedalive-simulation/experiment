@@ -9,19 +9,32 @@ live from Solana RPC in the viewer's browser. Rebuild + re-upload on change:
 """
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 LOG = os.path.join(ROOT, "audit", "log.jsonl")
 OUT = os.path.join(ROOT, "site", "monitor.html")
+
+# Turbo uploads are free only under 100 KiB, and the heartbeat deploys this page
+# unattended against the same wallet that pays the interest. On 2026-09-02 the
+# page had grown to 97,620 bytes — the daily "proof of life" observation rows
+# were the bulk — and would have crossed the line within about a week. So:
+# decisions, actions, spends, errors and milestones are baked in full; hourly
+# observations only for a trailing window, shrunk until the page fits.
+SIZE_LIMIT = 96 * 1024
+OBS_DAYS_DEFAULT = 14
 
 entries = []
 with open(LOG) as f:
     for raw in f:
         entries.append(json.loads(raw))
 
-audit_json = json.dumps(entries)
 built_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def select(obs_days):
+    cut = (datetime.now(timezone.utc) - timedelta(days=obs_days)).isoformat(timespec="seconds")
+    return [e for e in entries if e["type"] != "observation" or e["ts"] >= cut]
 
 TEMPLATE = """<!doctype html>
 <html lang="en">
@@ -81,6 +94,7 @@ a{color:var(--amber)}
   <div class="tblbox"><table id="txs"><thead><tr><th>Time (UTC)</th><th>Δ SOL</th><th>Δ USDC</th><th>Signature</th></tr></thead><tbody></tbody></table></div>
 
   <h2>Audit log (decisions &amp; actions, snapshot at build)</h2>
+  <p class="sub" style="margin-bottom:10px">__AUDIT_NOTE__</p>
   <div class="tblbox"><table id="audit"><thead><tr><th>Time (UTC)</th><th>Type</th><th>Summary</th><th>Detail</th></tr></thead><tbody></tbody></table></div>
 
   <p class="foot">Wallet <a href="https://solscan.io/account/__ADDR__">__ADDR__</a> · <a href="https://seedalive.ar.io">public site</a> · page operated by the AI agent</p>
@@ -230,10 +244,30 @@ function drawChart(pts){
 </html>
 """
 
-html = (TEMPLATE
-        .replace("__AUDIT_JSON__", audit_json)
-        .replace("__BUILT_AT__", built_at)
-        .replace("__ADDR__", "5JRLaQYuYyaqtfEyfgs8X3H5E5N2UUfHi4TFa9KHDrvn"))
+def render(kept, obs_days):
+    note = (f"decisions, actions and spends in full; heartbeat observations for the last {obs_days} days. "
+            f"Full log (every row, append-only): "
+            f"<a href=\"https://github.com/seedalive-simulation/experiment/blob/main/audit/AUDIT.md\">audit/AUDIT.md</a>")
+    return (TEMPLATE
+            .replace("__AUDIT_JSON__", json.dumps(kept))
+            .replace("__AUDIT_NOTE__", note)
+            .replace("__BUILT_AT__", built_at)
+            .replace("__ADDR__", "5JRLaQYuYyaqtfEyfgs8X3H5E5N2UUfHi4TFa9KHDrvn"))
+
+
+obs_days = OBS_DAYS_DEFAULT
+kept = select(obs_days)
+html = render(kept, obs_days)
+while len(html.encode("utf-8")) > SIZE_LIMIT and obs_days > 0:
+    obs_days -= 1
+    kept = select(obs_days)
+    html = render(kept, obs_days)
+if len(html.encode("utf-8")) > SIZE_LIMIT:
+    # observations are gone and it still does not fit: drop the oldest rows of any type
+    while len(html.encode("utf-8")) > SIZE_LIMIT and len(kept) > 20:
+        kept = kept[1:]
+        html = render(kept, obs_days)
 with open(OUT, "w") as f:
     f.write(html)
-print("built", OUT, len(html), "bytes, audit entries:", len(entries))
+print("built", OUT, len(html.encode("utf-8")), "bytes, audit entries:", len(kept), "of", len(entries),
+      f"(observations: last {obs_days} days)")

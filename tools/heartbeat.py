@@ -95,7 +95,11 @@ def main():
     st.setdefault("seen_moltbook", [])
 
     if not DRY:
-        run(["git", "pull", "-q", "--rebase"])
+        # QUEUE.md is regenerated every run and only committed when its body
+        # changes, so it is usually dirty; discard it before pulling or the
+        # rebase refuses and this run works from a stale ledger.
+        run(["git", "checkout", "-q", "--", "QUEUE.md"])
+        run(["git", "pull", "-q", "--rebase", "--autostash"])
 
     # 1. balances + ledger drift
     sol = rpc("getBalance", [ADDR])["value"] / 1e9
@@ -103,10 +107,13 @@ def main():
                for a in rpc("getTokenAccountsByOwner", [ADDR, {"mint": USDC}, {"encoding": "jsonParsed"}])["value"])
     balances = f"{usdc:.2f} USDC, {sol:.4f} SOL"
     notes.append(f"balances: {balances}")
-    sol_gas = 0.5 - sol
-    if sol_gas - 0.0273 > 0.01:
-        flags.append(f"Ledger drift: on-chain SOL fees {sol_gas:.4f} exceed booked 0.0273 by "
-                     f"{sol_gas - 0.0273:.4f} SOL — update LEDGER.md.")
+    # Booked SOL outflow = itemised moves in LEDGER.md. Update this constant whenever
+    # SOL leaves for a booked reason; anything beyond it (+0.01 tolerance) is drift.
+    BOOKED_SOL_OUT = 0.0306 + 0.410014   # fees through 2026-09-02 + treasury swap 2026-09-02 (tx 45ruvE…)
+    sol_out = 0.5 - sol
+    if sol_out - BOOKED_SOL_OUT > 0.01:
+        flags.append(f"Ledger drift: on-chain SOL outflow {sol_out:.4f} exceeds booked {BOOKED_SOL_OUT:.4f} by "
+                     f"{sol_out - BOOKED_SOL_OUT:.4f} SOL — update LEDGER.md.")
 
     # 2. interest — truth from chain, not calendar
     sigs = rpc("getSignaturesForAddress", [ADDR, {"limit": 100}])
@@ -125,6 +132,35 @@ def main():
     if overdue_days > 0.5:
         flags.append(f"INTEREST OVERDUE by {overdue_days:.1f} days — settle_interest.py reflex failed. "
                      f"Run it manually, check settle.log, pay 14 USDC to funder with INTEREST memo.")
+
+    # 2b. runway — payments covered by USDC plus SOL above the gas floor (the
+    # settle reflex sells SOL when USDC runs short, so both count). When only
+    # one payment is left in total, the post-mortem has to be written while
+    # there is still compute to write it — flagged once.
+    try:
+        preq = urllib.request.Request("https://lite-api.jup.ag/price/v3?ids=So11111111111111111111111111111111111111112",
+                                      headers={"User-Agent": "seed-agent/1.0 (+https://seedalive.ar.io)"})  # CF 1010 otherwise
+        with urllib.request.urlopen(preq, timeout=20) as r:
+            sol_px = float(json.load(r)["So11111111111111111111111111111111111111112"]["usdPrice"])
+    except Exception:
+        sol_px = 0.0
+    convertible = max(0.0, sol - 0.05) * sol_px * 0.98
+    covered = int((usdc + convertible) // 14.0)
+    death = datetime.fromtimestamp(next_due + covered * 7 * 86400, tz=timezone.utc).date()
+    notes.append(f"runway: {covered} payment(s) covered (USDC {usdc:.2f} + convertible SOL ~${convertible:.2f}); "
+                 f"uncovered from {death}")
+    if covered <= 1 and not st.get("flagged_postmortem"):
+        st["flagged_postmortem"] = True
+        flags.append(f"RUNWAY: total assets cover at most one more interest payment (uncovered from {death}). "
+                     f"Write POSTMORTEM.md now, while there is compute to write it; see WAKE.md 'Endgame'.")
+    if covered >= 2:
+        st["flagged_postmortem"] = False  # income arrived; re-arm
+
+    # 2c. the dashboard must stay under Turbo's 100 KiB free tier (build_monitor.py trims; this is the alarm)
+    mon = os.path.join(ROOT, "site", "monitor.html")
+    if os.path.exists(mon) and os.path.getsize(mon) > 100 * 1024 and not st.get("flagged_monitor_size"):
+        st["flagged_monitor_size"] = True
+        flags.append("monitor.html exceeds 100 KiB — Turbo upload will not be free; fix tools/build_monitor.py trimming.")
 
     # 3. incoming memos (commissions / guestbook), each flagged once, own memos excluded
     new_memos = []
@@ -246,7 +282,7 @@ def main():
     # audit: only on change, or daily proof of life
     changed = st.get("last_balances") != balances
     last_obs = st.get("last_obs_ts", 0)
-    if flags or changed or now().timestamp() - last_obs > 86400:
+    if (flags or changed or now().timestamp() - last_obs > 86400) and not DRY:
         audit("observation", f"heartbeat: {len(flags)} items need judgment", "; ".join(notes)[:300])
         st["last_obs_ts"] = now().timestamp()
     st["last_balances"] = balances
@@ -273,7 +309,8 @@ def main():
         # explicit paths only — NEVER `git add -A` (it once committed .env and leaked a key)
         # QUEUE.md is committed only when its body (minus the timestamp line) changed;
         # before this the timestamp alone produced 24 "queue refresh" commits a day.
-        q_body = hashlib.sha256("\n".join(lines[1:]).encode()).hexdigest()[:16]
+        volatile = ("- interest:", "- runway:")  # accrue by the hour; not a reason to commit
+        q_body = hashlib.sha256("\n".join(l for l in lines[1:] if not l.startswith(volatile)).encode()).hexdigest()[:16]
         if q_body != st.get("last_queue_hash"):
             st["last_queue_hash"] = q_body
             save_state(st)

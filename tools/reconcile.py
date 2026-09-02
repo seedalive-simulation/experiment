@@ -63,16 +63,50 @@ def explained_usdc_outflow():
     return out
 
 
+def swap_credits(limit=100):
+    """USDC that arrived from selling our own SOL (treasury swaps), read from chain.
+
+    A swap has no memo of ours; it is recognised by shape: SOL down by more than
+    dust and USDC up in the same transaction. Returns (sol_out, usdc_in, n).
+    """
+    sol_out = usdc_in = 0.0
+    n = 0
+    for s in rpc("getSignaturesForAddress", [ADDR, {"limit": limit}]):
+        if s.get("err") or s.get("memo"):
+            continue
+        tx = rpc("getTransaction", [s["signature"], {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 0}])
+        if not tx:
+            continue
+        keys = [k["pubkey"] if isinstance(k, dict) else k for k in tx["transaction"]["message"]["accountKeys"]]
+        if ADDR not in keys:
+            continue
+        ai = keys.index(ADDR)
+        dsol = (tx["meta"]["postBalances"][ai] - tx["meta"]["preBalances"][ai]) / 1e9
+        pre = post = 0.0
+        for b in tx["meta"].get("preTokenBalances", []):
+            if b.get("owner") == ADDR and b.get("mint") == USDC:
+                pre = b["uiTokenAmount"]["uiAmount"] or 0
+        for b in tx["meta"].get("postTokenBalances", []):
+            if b.get("owner") == ADDR and b.get("mint") == USDC:
+                post = b["uiTokenAmount"]["uiAmount"] or 0
+        if dsol < -0.01 and post - pre > 0.5:
+            sol_out += -dsol
+            usdc_in += post - pre
+            n += 1
+    return sol_out, usdc_in, n
+
+
 def main():
     sol = rpc("getBalance", [ADDR])["value"] / 1e9
     usdc = token_balance(USDC)
     ario = token_balance(ARIO)
+    swap_sol, swap_usdc, swaps = swap_credits()
 
-    sol_spent = GENESIS_SOL - sol
-    usdc_spent = GENESIS_USDC - usdc
+    sol_spent = GENESIS_SOL - sol - swap_sol          # fees only; swaps itemised separately
+    usdc_spent = GENESIS_USDC + swap_usdc - usdc      # genesis + swap credits - balance = outflow
     print("=== on-chain reality ===")
-    print(f"SOL:  {sol:.6f}  (spent {sol_spent:.6f} since genesis)")
-    print(f"USDC: {usdc:.2f}  (spent {usdc_spent:.2f} since genesis)")
+    print(f"SOL:  {sol:.6f}  (fees {sol_spent:.6f} since genesis; {swap_sol:.6f} sold in {swaps} treasury swap(s))")
+    print(f"USDC: {usdc:.2f}  (spent {usdc_spent:.2f} since genesis incl. {swap_usdc:.2f} received from SOL swaps)")
     print(f"ARIO: {ario:.2f}  (from the 6 USDC swap; for ArNS renewals)")
     print()
     print("Accounted-for USDC outflow (derived from chain memos):")
@@ -83,11 +117,11 @@ def main():
     gap = usdc_spent - expected
     print(f"  = -{expected:.2f} expected vs -{usdc_spent:.2f} actual")
     print("  -> USDC matches." if abs(gap) < 0.01 else f"  -> USDC DRIFT ${gap:+.2f} UNEXPLAINED")
-    print(f"  SOL:  ledger lumped ~0.0272; actual {sol_spent:.6f}")
-    drift = sol_spent - 0.0272
-    if abs(drift) > 0.0001:
-        print(f"  -> SOL fee drift since last booking: {drift:+.6f} SOL "
-              f"(~${drift*240:.4f} at ARIO... use live SOL price). Book as 'accumulated network fees'.")
+    BOOKED_SOL_FEES = 0.0306  # LEDGER.md, booked 2026-09-02
+    print(f"  SOL:  ledger books {BOOKED_SOL_FEES} of fees; actual {sol_spent:.6f}")
+    drift = sol_spent - BOOKED_SOL_FEES
+    if abs(drift) > 0.0005:
+        print(f"  -> SOL fee drift since last booking: {drift:+.6f} SOL. Book as 'accumulated network fees'.")
     else:
         print("  -> SOL matches booked figure.")
 
