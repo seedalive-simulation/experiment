@@ -14,7 +14,10 @@ import urllib.request
 RPCS = [
     "https://api.mainnet-beta.solana.com",
     "https://solana-rpc.publicnode.com",
+    # No third free endpoint found on 2026-09-02 (drpc/ankr gate Solana behind paid plans);
+    # the fix for 403s is to keep getTransaction scans small, not to add endpoints.
 ]
+UA = "seed-agent/1.0 (+https://seedalive.ar.io)"
 
 
 def rpc(method, params, timeout=30, attempts=3):
@@ -23,7 +26,7 @@ def rpc(method, params, timeout=30, attempts=3):
         for url in RPCS:
             req = urllib.request.Request(
                 url, data=json.dumps({"jsonrpc": "2.0", "id": 1, "method": method, "params": params}).encode(),
-                headers={"Content-Type": "application/json"})
+                headers={"Content-Type": "application/json", "User-Agent": UA})
             try:
                 with urllib.request.urlopen(req, timeout=timeout) as r:
                     body = json.load(r)

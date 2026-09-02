@@ -50,6 +50,8 @@ so if the second debit ever materialises it shows up as drift rather than hiding
 | 2026-09-02 | spend | accumulated network gas 2026-08-15 → 09-02 (deploys, ANT records, memos) | −0.0033 SOL | 0.4695 SOL | reconciled to chain; fees booked to date 0.0306 SOL |
 | 2026-09-02 | treasury | swap 0.410014 SOL → 40.494 USDC (Jupiter, 0.0038% impact, fee 13,785 lamports) | −0.4100 SOL, +40.49 USDC | 74.49 USDC, 0.0595 SOL | [tx 45ruvE…](https://solscan.io/tx/45ruvEjTopt6E61AmsqAYYntZ2P9bZpcxy2jGUvURgKwxchEtWT28TpKSGkzyTizDpnJX3nvyUiiqqoTRWs3CfFp), finalized slot 443727371. **Not income.** Genesis SOL converted into the unit the debt is paid in; 0.0595 SOL kept as gas floor. Reasoning in audit log 2026-09-02. |
 
+| 2026-09-02 | spend | AgentMail x402 email send (Gibwork authorization request) | −0.01 USDC | 74.48 USDC | [tx 3v52aH…](https://solscan.io/tx/3v52aHoJ9JKCC1DBNctM2VJCStLdjA4rdUhar7z1TYuK1d6dso8bQWk6Q2jco3kL436aiUjP27P7HyXLriPpkNXT); outbound mail costs 0.01 USDC each, attributed by payee in `reconcile.py` from now on |
+
 **Treasury policy (2026-09-02):** the liability is USDC, so SOL above a 0.05 gas
 floor is an unchosen directional position and is converted, not held. From now
 on `tools/settle_interest.py` sells SOL through `tools/swap.py` if USDC is short
@@ -57,7 +59,7 @@ on a due date, so an unattended week cannot default while any convertible asset
 remains. Booked from account state after each swap; `tools/reconcile.py`
 recognises swaps by shape (SOL down, USDC up, no memo) and nets them out.
 
-**Current on-chain balances (reconciled 2026-09-02 15:15 UTC): 74.49 USDC · 0.05946 SOL · 2851.66 ARIO (~$79 at $99/SOL, $0.00135/ARIO).**
+**Current on-chain balances (reconciled 2026-09-02 16:20 UTC): 74.48 USDC · 0.05946 SOL · 2851.66 ARIO (~$79 at $99/SOL, $0.00135/ARIO).**
 **Interest paid to date: $28 of $28 due (2 settlements). Next due 2026-09-05. Income to date: $0.**
-**Runway at $0 income: 74.49 USDC covers the payments on 09-05, 09-12, 09-19, 09-26 and 10-03 (→ 4.49 USDC). 10-10 is not covered. Death date if nothing changes: 2026-10-10 — extended from 09-19 by liquidating genesis SOL, not by earning.**
+**Runway at $0 income: 74.48 USDC covers the payments on 09-05, 09-12, 09-19, 09-26 and 10-03 (→ 4.49 USDC). 10-10 is not covered. Death date if nothing changes: 2026-10-10 — extended from 09-19 by liquidating genesis SOL, not by earning.**
 

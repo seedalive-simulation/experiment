@@ -27,6 +27,12 @@ BOOKED_UNMEMOED = [
     # x402 payments carry the payee's opaque payment id, never a memo of ours.
     (2.0, "AgentMail x402 inbox create, 2026-08-21 (1 net debit; see LEDGER)"),
 ]
+# Known x402 payees: USDC that leaves to one of these owners with no memo is
+# attributed by name, derived from chain, so per-call micro-payments (an email
+# send is 0.01 USDC) never have to be hand-booked one by one.
+KNOWN_PAYEES = {
+    "7r4e5dwNS68MDaxbw7N8jbzHq7RCMBp9z6smHFH4NXWw": "AgentMail x402 (email sends @0.01; from 2026-09-02)",
+}
 
 
 import os as _os, sys as _sys
@@ -63,16 +69,20 @@ def explained_usdc_outflow():
     return out
 
 
-def swap_credits(limit=100):
-    """USDC that arrived from selling our own SOL (treasury swaps), read from chain.
-
-    A swap has no memo of ours; it is recognised by shape: SOL down by more than
-    dust and USDC up in the same transaction. Returns (sol_out, usdc_in, n).
+def scan_unmemoed(limit=150, since_unix=1756771200):
+    """Read every memo-less tx since `since_unix` (default 2026-09-02 00:00 UTC,
+    when this scan started being the source of truth) and classify by shape:
+    treasury swaps (SOL down, USDC up) and USDC paid to known x402 payees.
+    Returns (swap_sol_out, swap_usdc_in, n_swaps, {payee_label: usdc}).
     """
     sol_out = usdc_in = 0.0
     n = 0
+    payees = {}
     for s in rpc("getSignaturesForAddress", [ADDR, {"limit": limit}]):
-        if s.get("err") or s.get("memo"):
+        memo = s.get("memo") or ""
+        # our own INTEREST/COMPUTE memos are already counted by explained_usdc_outflow();
+        # x402 receipts DO carry a memo (the payee's payment id), so they must not be skipped
+        if s.get("err") or "INTEREST" in memo or "COMPUTE" in memo or (s.get("blockTime") or 0) < since_unix:
             continue
         tx = rpc("getTransaction", [s["signature"], {"encoding": "jsonParsed", "maxSupportedTransactionVersion": 0}])
         if not tx:
@@ -82,25 +92,31 @@ def swap_credits(limit=100):
             continue
         ai = keys.index(ADDR)
         dsol = (tx["meta"]["postBalances"][ai] - tx["meta"]["preBalances"][ai]) / 1e9
-        pre = post = 0.0
+        bal = {}
         for b in tx["meta"].get("preTokenBalances", []):
-            if b.get("owner") == ADDR and b.get("mint") == USDC:
-                pre = b["uiTokenAmount"]["uiAmount"] or 0
+            if b.get("mint") == USDC:
+                bal.setdefault(b.get("owner"), [0.0, 0.0])[0] = b["uiTokenAmount"]["uiAmount"] or 0
         for b in tx["meta"].get("postTokenBalances", []):
-            if b.get("owner") == ADDR and b.get("mint") == USDC:
-                post = b["uiTokenAmount"]["uiAmount"] or 0
-        if dsol < -0.01 and post - pre > 0.5:
+            if b.get("mint") == USDC:
+                bal.setdefault(b.get("owner"), [0.0, 0.0])[1] = b["uiTokenAmount"]["uiAmount"] or 0
+        mine = bal.get(ADDR, [0.0, 0.0])
+        dusdc = mine[1] - mine[0]
+        if dsol < -0.01 and dusdc > 0.5:
             sol_out += -dsol
-            usdc_in += post - pre
+            usdc_in += dusdc
             n += 1
-    return sol_out, usdc_in, n
+        elif dusdc < 0:
+            for owner, (pre, post) in bal.items():
+                if owner != ADDR and post - pre > 0 and owner in KNOWN_PAYEES:
+                    payees[KNOWN_PAYEES[owner]] = payees.get(KNOWN_PAYEES[owner], 0.0) + (post - pre)
+    return sol_out, usdc_in, n, payees
 
 
 def main():
     sol = rpc("getBalance", [ADDR])["value"] / 1e9
     usdc = token_balance(USDC)
     ario = token_balance(ARIO)
-    swap_sol, swap_usdc, swaps = swap_credits()
+    swap_sol, swap_usdc, swaps, payees = scan_unmemoed()
 
     sol_spent = GENESIS_SOL - sol - swap_sol          # fees only; swaps itemised separately
     usdc_spent = GENESIS_USDC + swap_usdc - usdc      # genesis + swap credits - balance = outflow
@@ -111,6 +127,7 @@ def main():
     print()
     print("Accounted-for USDC outflow (derived from chain memos):")
     parts = explained_usdc_outflow()
+    parts.update(payees)
     for label, amt in parts.items():
         print(f"  -{amt:>7.2f}  {label}")
     expected = sum(parts.values())

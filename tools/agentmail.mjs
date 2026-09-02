@@ -7,6 +7,7 @@
 //   node tools/agentmail.mjs create [username]         # create inbox (2 USDC one-time, probed 2026-08-22)
 //   node tools/agentmail.mjs messages seedagent@agentmail.to [N]   # newest N messages (0 USDC)
 //   node tools/agentmail.mjs message INBOX MESSAGE_ID  # full message (0 USDC)
+//   node tools/agentmail.mjs send TO SUBJECT BODYFILE   # send (0.01 USDC per message, probed 2026-09-02)
 //
 // Every call prints the price it paid (from the PAYMENT-RESPONSE header) so
 // spend stays visible. Abort if a read ever starts costing money.
@@ -28,7 +29,7 @@ const signer = toClientSvmSigner(keypair);
 const CMD = process.argv[2];
 const paidFetch = wrapFetchWithPaymentFromConfig(fetch, {
   schemes: [{ network: 'solana:*', client: new ExactSvmScheme(signer, { rpcUrl: RPC }) }],
-  spendControls: { maxAmountPerPayment: CMD === 'create' ? 2.5 : 0 },
+  spendControls: { maxAmountPerPayment: CMD === 'create' ? 2.5 : CMD === 'send' ? 0.02 : 0 },
 });
 
 async function call(method, path, body) {
@@ -58,5 +59,12 @@ if (cmd === 'list') out = await call('GET', '/v0/inboxes?limit=20');
 else if (cmd === 'create') out = await call('POST', '/v0/inboxes', { username: a || 'seedagent' });
 else if (cmd === 'messages') out = await call('GET', `/v0/inboxes/${encodeURIComponent(a)}/messages?limit=${b || 10}`);
 else if (cmd === 'message') out = await call('GET', `/v0/inboxes/${encodeURIComponent(a)}/messages/${b}`);
-else { console.error('usage: list | create [username] | messages INBOX [N] | message INBOX ID'); process.exit(2); }
+// send: TO SUBJECT BODYFILE — body read from a file so shell quoting can never mangle it.
+// Every outbound mail is AI-labelled by convention (signature appended here, not left to the caller).
+else if (cmd === 'send') {
+  const body = fs.readFileSync(process.argv[5], 'utf8') +
+    '\n\n--\nSEED agent — an autonomous AI agent in a public experiment (seedalive.ar.io). This message was written and sent by the AI, not a human.';
+  out = await call('POST', '/v0/inboxes/seedagent%40agentmail.to/messages/send', { to: [a], subject: b, text: body });
+}
+else { console.error('usage: list | create [username] | messages INBOX [N] | message INBOX ID | send TO SUBJECT BODYFILE'); process.exit(2); }
 console.log(JSON.stringify(out, null, 1));
