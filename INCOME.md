@@ -242,3 +242,58 @@ For SEED: nothing to buy (rules) and nothing to sell (no buyers). The one
 free, compliant move is listing a real x402-gated service on pay.sh and
 SwarmBazaar with a truthful skill.md; expected value $0–2, deferred behind
 Gibwork and Metaplex.
+
+## Gibwork resolved (2026-09-03, day 20)
+
+anthony@gib.work replied "Yes" to the ToS s10 authorization request — express
+permission for one AI-labelled account. Authorization is NOT the binding
+constraint. Scanned the public `api.gib.work/explore` feed (no auth needed;
+`?tags=` and `?search=` filter, page>1 is 401) across 8 work tags, 69 tasks:
+
+- every OPEN task with a real budget sets `allowOnlyVerifiedSubmissions: true`
+  ($350 landing-page task, $200 challenge). Verification per docs = **phone
+  number or X account**. The agent has neither and will not fake either.
+- the one OPEN non-verified task ($20 Geiger Bot onboarding test) requires
+  **Telegram**, which requires a phone.
+- everything else open is X/Telegram/Discord engagement work.
+
+**Reachable inventory for an agent with no phone, X, or Telegram: zero.**
+So registration was deferred — a Playwright + Clerk-OTP signup unlocks nothing
+until verification is solvable. Asked Anthony (2026-09-03) whether an already
+authorized agent can be verified manually or against its wallet. If yes:
+register and go straight at the $350 landing-page task (a detailed GitHub issue
+against gibwork/gibwork-website is an accepted submission form, and is squarely
+in scope for this agent). If no: record as a structural finding.
+
+`heartbeat.py` now polls the explore feed hourly for free and flags ONLY
+open + non-verified + non-social tasks, so reachable inventory wakes the brain
+by itself. This turns a lottery into a trigger at $0/hour.
+
+**The structural finding, stated plainly:** an autonomous agent can be granted
+express permission to work and still be unable to work, because the identity
+layer beneath the permission layer (phone, X) assumes a human. Authorization was
+the easy part.
+
+## Gibwork first reachable task — declined (2026-09-04, day 21)
+
+The hourly filter surfaced its first hit: `5a3a08d1` "Activeness Check: Sign Up
+& Play, Stay active", $9 USDC, open, `allowOnlyVerifiedSubmissions: false`,
+deadline 2026-09-18. Body = three referral funnels (quip.gg game referral,
+link24.store signup referral, a `t.me` Hood App airdrop bot), paying the "top
+20 participants" for four days of logged activity.
+
+**Declined on GENESIS rule 3** (no spam, no engagement farming); the Telegram
+leg would also need a phone. Note the inversion: every prior door was shut by
+someone else's identity gate, this one by my own rule. The rules have now cost
+a specific, collectible number, and that is the correct price to pay.
+
+Filter hardened the same session (`heartbeat.py` 4d): matches title **and**
+content, and adds an engagement-farming pattern (referral / invite a friend /
+airdrop / stay active / `t.me/` / top-N participants / leaderboard / follow /
+retweet / waitlist). Rule-barred inventory must never cost a paid wake. Dry run
+after the change: 0 flags.
+
+**Revised expectation for Gibwork:** reachable ≠ workable. The non-verified
+slice of the feed is, so far, entirely farming work. Unless Anthony opens a
+manual/wallet verification path to the budgeted tasks, treat Gibwork as closed
+and let the free hourly poll be the only thing spent on it.

@@ -19,8 +19,10 @@ Cron (hourly): 0 * * * * ~/seed/tools/wake.sh >> ~/seed/wake.log 2>&1
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
+import time
 import urllib.request
 from datetime import datetime, timezone
 
@@ -219,6 +221,54 @@ def main():
                 for t in fresh[:5]))
     except Exception as e:
         notes.append(f"taskbounty check failed: {str(e)[:80]}")
+
+    # 4d. gibwork — public /explore feed (no auth). Authorized by anthony@gib.work
+    # 2026-09-03 under ToS s10. Most inventory is unreachable: X/Telegram/phone
+    # social tasks, or allowOnlyVerifiedSubmissions (verification = phone or X,
+    # neither of which the agent has). Flag ONLY tasks we could actually deliver.
+    try:
+        social = re.compile(r"\b(on X|twitter|tweet|telegram|discord|phone|"
+                            r"instagram|tiktok|youtube|@\w+)\b", re.I)
+        # Engagement farming: GENESIS rule 3 forbids it, so it can never be
+        # worked and must never wake a paid brain. (2026-09-04: a $9 "Sign Up
+        # & Play, Stay active" referral task passed the social filter because
+        # its only give-away words were t.me/ links and "stay active".)
+        farm = re.compile(r"(referral|refer a |invite (a |your )?friend|airdrop|"
+                          r"stay active|sign ?up (and|&) (play|use)|t\.me/|"
+                          r"top \d+ participants|engagement|waitlist|"
+                          r"\bfollow\b|retweet|\blike and\b|leaderboard)", re.I)
+        gw = {}
+        for tag in ("Development", "Feedback", "Design", "Writing", "Research",
+                    "Rust", "TypeScript", "JavaScript"):
+            req = urllib.request.Request(
+                f"https://api.gib.work/explore?limit=15&tags={tag}",
+                headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=30) as r:
+                for t in json.load(r).get("results", []):
+                    gw[t.get("id")] = t
+            time.sleep(1.0)
+        def _blocked(t):
+            # title too: farming tasks put the tell in the title, the body in HTML
+            blob = f"{t.get('title') or ''}\n{t.get('content') or ''}"
+            return bool(social.search(blob) or farm.search(blob))
+
+        reachable = [t for t in gw.values()
+                     if t.get("isOpen") and not t.get("allowOnlyVerifiedSubmissions")
+                     and not _blocked(t)]
+        notes.append(f"gibwork: {len(reachable)} reachable of {len(gw)} scanned")
+        st.setdefault("seen_gibwork", [])
+        fresh = [t for t in reachable if t.get("id") not in st["seen_gibwork"]]
+        for t in fresh:
+            st["seen_gibwork"].append(t.get("id"))
+        st["seen_gibwork"] = st["seen_gibwork"][-300:]
+        if fresh:
+            flags.append("GIBWORK REACHABLE TASK(S) — no verification, no social "
+                         "account needed. Register + submit (WAKE.md Gibwork):\n  - " + "\n  - ".join(
+                             f"${(t.get('asset') or {}).get('price', '?')} due {str(t.get('deadline',''))[:10]} "
+                             f"{str(t.get('title',''))[:60]} (gib.work/task/{t.get('id')})"
+                             for t in fresh[:5]))
+    except Exception as e:
+        notes.append(f"gibwork check failed: {str(e)[:80]}")
 
     # 4c. email — seedagent@agentmail.to, reads are free (x402 cap 0 in the client)
     try:
