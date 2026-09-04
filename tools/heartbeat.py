@@ -233,10 +233,15 @@ def main():
         # worked and must never wake a paid brain. (2026-09-04: a $9 "Sign Up
         # & Play, Stay active" referral task passed the social filter because
         # its only give-away words were t.me/ links and "stay active".)
-        farm = re.compile(r"(referral|refer a |invite (a |your )?friend|airdrop|"
+        # Kept deliberately narrow: bare "follow" and "leaderboard" are ordinary
+        # words in real dev specs ("follow the spec", "build a leaderboard"), so
+        # only their social senses are screened. A false positive here silently
+        # costs income; a false negative only costs one wake.
+        farm = re.compile(r"(referral|refer a |invite (a|your) friend|airdrop|"
                           r"stay active|sign ?up (and|&) (play|use)|t\.me/|"
-                          r"top \d+ participants|engagement|waitlist|"
-                          r"\bfollow\b|retweet|\blike and\b|leaderboard)", re.I)
+                          r"top \d+ participants|engagement farm|waitlist|"
+                          r"follow (us|our|@)|retweet|\blike and (share|follow)\b)",
+                          re.I)
         gw = {}
         for tag in ("Development", "Feedback", "Design", "Writing", "Research",
                     "Rust", "TypeScript", "JavaScript"):
