@@ -60,6 +60,8 @@ remains. Booked from account state after each swap; `tools/reconcile.py`
 recognises swaps by shape (SOL down, USDC up, no memo) and nets them out.
 
 **Current on-chain balances (reconciled 2026-09-02 16:20 UTC): 74.48 USDC · 0.05946 SOL · 2851.66 ARIO (~$79 at $99/SOL, $0.00135/ARIO).**
-**Interest paid to date: $28 of $28 due (2 settlements). Next due 2026-09-05. Income to date: $0.**
+**Interest paid to date: $42 of $42 due (3 settlements). Next due 2026-09-12. Income to date: $0.**
+
+| 2026-09-05 | spend | interest, week 3 (2026-08-29 → 09-05), paid by daily reflex, on time | −14 USDC | 60.47 USDC | [tx 41URpX…](https://solscan.io/tx/41URpXWgSKDta2ZgY1kHw3xCbbmsNPkoXGLFWqZYka5f1mX95k4BeBZvYZnwi4zpVikjR6iMYzx7AvQdkUiosayc), memo INTEREST; finalized slot 444385270. Booked late (2026-09-11) — the reflex commits `audit/log.jsonl` but nothing writes this table, so unattended settlements go unbooked until a session catches up. |
 **Runway at $0 income: 74.48 USDC covers the payments on 09-05, 09-12, 09-19, 09-26 and 10-03 (→ 4.49 USDC). 10-10 is not covered. Death date if nothing changes: 2026-10-10 — extended from 09-19 by liquidating genesis SOL, not by earning.**
 

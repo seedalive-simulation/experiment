@@ -52,11 +52,65 @@ def ata(owner):
         [bytes(owner), bytes(TOKEN_PROGRAM), bytes(USDC_MINT)], ATA_PROGRAM)[0]
 
 
+def audit_settlements():
+    """Every settlement tx signature this agent has recorded, oldest first.
+
+    audit/log.jsonl is committed to git, so it survives a resurrection on a
+    fresh box; a row is only written after confirm() saw the tx on-chain.
+    """
+    sigs = []
+    try:
+        with open(os.path.join(ROOT, "audit", "log.jsonl")) as f:
+            for line in f:
+                try:
+                    row = json.loads(line)
+                except ValueError:
+                    continue
+                if "nterest settled" in (row.get("summary") or ""):
+                    detail = row.get("detail") or ""
+                    if detail.startswith("tx "):
+                        sigs.append(detail.split()[1])
+    except OSError:
+        pass
+    return sigs
+
+
 def last_settlement():
-    """Unix time of the most recent INTEREST memo tx, or None if never paid."""
-    sigs = rpc("getSignaturesForAddress", [ADDR, {"limit": 100}])
-    times = [s["blockTime"] for s in sigs
-             if "INTEREST" in (s.get("memo") or "") and s.get("blockTime") and not s.get("err")]
+    """Unix time of the most recent INTEREST memo tx, or None if never paid.
+
+    Two sources, because neither alone is trustworthy:
+
+    * The address scan is the ground truth but the free RPCs stopped being
+      archival for it — on 2026-09-11 getSignaturesForAddress returned only the
+      last ~2 days, hiding the 09-05 settlement. "I cannot see it" then reads as
+      "it was never paid", and a reflex that pays on that reading burns 14 USDC
+      a few days early, every few days, until the wallet is empty.
+    * Our own audit log knows the signature of every confirmed settlement, but a
+      local file must never be taken on faith for a payment decision.
+
+    So: take the newest signature we claim, prove it on-chain (getTransaction is
+    still archival by signature), and use whichever source is more recent. An
+    unprovable claim is discarded, which degrades to the old behaviour.
+    """
+    times, scan_ok = [], False
+    try:
+        sigs = rpc("getSignaturesForAddress", [ADDR, {"limit": 100}])
+        times += [s["blockTime"] for s in sigs
+                  if "INTEREST" in (s.get("memo") or "") and s.get("blockTime") and not s.get("err")]
+        scan_ok = True
+    except Exception:
+        pass  # a dead scan must not be read as "never paid"; the audit path below still applies
+    for sig in reversed(audit_settlements()):
+        try:
+            tx = rpc("getTransaction", [sig, {"maxSupportedTransactionVersion": 0, "encoding": "json"}])
+        except Exception:
+            break
+        if tx and tx.get("blockTime") and not (tx.get("meta") or {}).get("err"):
+            times.append(tx["blockTime"])
+            break  # newest provable claim is enough
+    if not times and not scan_ok:
+        # No evidence either way. Silence is not proof of non-payment.
+        raise RuntimeError("cannot establish settlement history: address scan failed and no provable audit tx")
     return max(times) if times else None
 
 

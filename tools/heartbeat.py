@@ -117,21 +117,29 @@ def main():
         flags.append(f"Ledger drift: on-chain SOL outflow {sol_out:.4f} exceeds booked {BOOKED_SOL_OUT:.4f} by "
                      f"{sol_out - BOOKED_SOL_OUT:.4f} SOL — update LEDGER.md.")
 
-    # 2. interest — truth from chain, not calendar
-    sigs = rpc("getSignaturesForAddress", [ADDR, {"limit": 100}])
-    paid_times = [s["blockTime"] for s in sigs
-                  if "INTEREST" in (s.get("memo") or "") and s.get("blockTime") and not s.get("err")]
+    # 2. interest — truth from chain, not calendar. Same reader the settle reflex
+    # uses, so the queue can never disagree with what the reflex will do: the free
+    # RPCs went non-archival for the address scan on 2026-09-11 and this section
+    # reported "paid $0, OVERDUE by 20 days" against three on-chain settlements,
+    # which woke a metered brain for nothing.
+    from settle_interest import audit_settlements, last_settlement
+    settlements = audit_settlements()
+    try:
+        last_paid = last_settlement()
+    except Exception as e:
+        last_paid = None
+        flags.append(f"Interest history unreadable ({e}) — the settle reflex will refuse to pay until "
+                     f"an RPC can prove the last settlement. Check settle.log.")
     days = (now() - GENESIS).total_seconds() / 86400
     accrued = days * INTEREST_PER_DAY
-    paid_total = 14.0 * len(paid_times)
-    if paid_times:
-        next_due = datetime.fromtimestamp(max(paid_times), tz=timezone.utc).timestamp() + 7 * 86400
-    else:
-        next_due = FIRST_DUE.timestamp()
+    paid_total = 14.0 * len(settlements)
+    next_due = (last_paid + 7 * 86400) if last_paid else FIRST_DUE.timestamp()
     overdue_days = (now().timestamp() - next_due) / 86400
-    notes.append(f"interest: accrued ${accrued:.2f}, paid ${paid_total:.0f} ({len(paid_times)} settlements), "
+    notes.append(f"interest: accrued ${accrued:.2f}, paid ${paid_total:.0f} ({len(settlements)} settlements), "
                  f"next due {datetime.fromtimestamp(next_due, tz=timezone.utc).date()}")
-    if overdue_days > 0.5:
+    if overdue_days > 0.5 and (last_paid or not settlements):
+        # last_paid is None with settlements on record = unreadable history, already
+        # flagged above; do not also cry default against payments we know we made.
         flags.append(f"INTEREST OVERDUE by {overdue_days:.1f} days — settle_interest.py reflex failed. "
                      f"Run it manually, check settle.log, pay 14 USDC to funder with INTEREST memo.")
 
@@ -164,7 +172,15 @@ def main():
         st["flagged_monitor_size"] = True
         flags.append("monitor.html exceeds 100 KiB — Turbo upload will not be free; fix tools/build_monitor.py trimming.")
 
-    # 3. incoming memos (commissions / guestbook), each flagged once, own memos excluded
+    # 3. incoming memos (commissions / guestbook), each flagged once, own memos excluded.
+    # Its own scan since the interest section stopped depending on one: the free RPCs
+    # only serve a couple of days of address history now, so this is a recent-memo
+    # inbox, not a complete one. Anything older than the window is missed — acceptable
+    # for an inbox (a sender who gets no reply writes again), fatal for a debt clock.
+    try:
+        sigs = rpc("getSignaturesForAddress", [ADDR, {"limit": 100}])
+    except Exception:
+        sigs = []
     new_memos = []
     for s in sigs[:40]:
         memo = (s.get("memo") or "")
