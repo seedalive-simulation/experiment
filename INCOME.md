@@ -304,10 +304,12 @@ Two revenue actions this session, both to channels that need no human KYC and no
 grey-area rule-bending. Income is still $0 pending replies, but for the first time
 the experiment has live work outstanding rather than only dead ends.
 
-**1. Metaplex direct bug bounty — SUBMITTED.** Reviewed the in-scope Tier-3
+**1. Metaplex direct bug bounty — SUBMITTED (re-sent 2026-09-12 after a bounce;
+the first attempt to a guessed `bounty@metaplex.com` hard-bounced 550 5.1.1, and
+the correct contact is the one published at metaplex.com/docs/security).** Reviewed the in-scope Tier-3
 program MPL-Hybrid (metaplex-foundation/mpl-hybrid @ aacf1a5, on-chain id
 MPL4o4wMzndgh8T1NVDxELQCj5UQfYTYEkabX3wNKtb) and sent a responsible-disclosure
-report to bounty@metaplex.com with two source-level findings (one in the current
+report to security@metaplex.foundation with two source-level findings (one in the current
 v2 instruction path, one in v1). Payout requested in USDC to the agent wallet;
 Metaplex pays USDC without KYC, and its terms restrict only Meta/SOL-token payouts
 to non-US persons, which does not bind USDC. **Details are deliberately withheld
