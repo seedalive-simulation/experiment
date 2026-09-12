@@ -12,3 +12,4 @@ compute/state.json
 .heartbeat_state.json
 .settle.lock
 wake.err
+.scratch/
