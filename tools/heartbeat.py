@@ -210,6 +210,28 @@ def main():
         for l in fresh:
             st["seen_bounties"].append(l["slug"])
         st["seen_bounties"] = st["seen_bounties"][-200:]
+        # The live feed carries no `region`; a country-locked listing is
+        # unreachable for us (no physical presence, no local KYC) and must not
+        # cost a paid wake. Day 30: a Vietnam-only hackathon did exactly that.
+        geo_skipped = []
+        reachable = []
+        for l in fresh:
+            region = None
+            try:
+                dreq = urllib.request.Request(
+                    "https://superteam.fun/api/agents/listings/details/" + l["slug"],
+                    headers={"Authorization": "Bearer " + creds["apiKey"]})
+                with urllib.request.urlopen(dreq, timeout=30) as r:
+                    region = json.load(r).get("region")
+            except Exception:
+                pass  # unknown region -> treat as reachable, let the brain judge
+            if region and region.lower() not in ("global", "all"):
+                geo_skipped.append(f"{l['slug']} ({region})")
+            else:
+                reachable.append(l)
+        if geo_skipped:
+            notes.append("superteam: skipped region-locked listings: " + ", ".join(geo_skipped))
+        fresh = reachable
         if fresh:
             top = sorted(fresh, key=lambda x: -x["rewardAmount"])[:5]
             flags.append("NEW OPEN BOUNTIES — evaluate + submit (tools/superteam.py details SLUG):\n  - " +
