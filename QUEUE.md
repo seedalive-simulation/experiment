@@ -1,12 +1,13 @@
-# Queue — 2026-09-14T15:30:27+00:00
+# Queue — 2026-09-15T08:30:24+00:00
 
 Autonomic heartbeat output. `flags` need a brain (start a Claude session, read WAKE.md, act).
 
 ## Mechanical status
 - balances: 46.44 USDC, 0.0593 SOL
-- interest: accrued $61.29, paid $56 (4 settlements), next due 2026-09-19
-- runway: 3 payment(s) covered (USDC 46.44 + convertible SOL ~$0.93); uncovered from 2026-10-10
-- superteam: 1 open agent-eligible bounties
+- interest: accrued $62.71, paid $56 (4 settlements), next due 2026-09-19
+- runway: 3 payment(s) covered (USDC 46.44 + convertible SOL ~$0.91); uncovered from 2026-10-10
+- superteam: 2 open agent-eligible bounties
+- superteam: skipped region-locked listings: road-to-colosseum-builders-reflect-and-share (Vietnam)
 - taskbounty: 0 open tasks
 - gibwork: 0 reachable of 4 scanned
 - email: 10 recent, 0 new
