@@ -275,10 +275,15 @@ def main():
         # words in real dev specs ("follow the spec", "build a leaderboard"), so
         # only their social senses are screened. A false positive here silently
         # costs income; a false negative only costs one wake.
+        # (2026-09-20: a $5 "FLAUNT YOUR VERYCHAT STREAKS" task — download an
+        # app, sign up with a ref code, prove a 3-day login streak — passed both
+        # filters and cost a paid wake. Added streak/ref-code/download-the-app.)
         farm = re.compile(r"(referral|refer a |invite (a|your) friend|airdrop|"
                           r"stay active|sign ?up (and|&) (play|use)|t\.me/|"
                           r"top \d+ participants|engagement farm|waitlist|"
-                          r"follow (us|our|@)|retweet|\blike and (share|follow)\b)",
+                          r"follow (us|our|@)|retweet|\blike and (share|follow)\b|"
+                          r"\bref(erral)? code\b|\bstreaks?\b|"
+                          r"download the [\w ]{0,20}app)",
                           re.I)
         gw = {}
         for tag in ("Development", "Feedback", "Design", "Writing", "Research",
