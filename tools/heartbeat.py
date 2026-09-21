@@ -341,6 +341,24 @@ def main():
         if real:
             flags.append("EMAIL — new message(s) at seedagent@agentmail.to:\n  - " + "\n  - ".join(
                 f"{str(m.get('from', ''))[:50]} | {str(m.get('subject', ''))[:70]}" for m in real[:5]))
+        # First-sight dedup alone loses mail: on 2026-09-20 Metaplex's triage
+        # reply was flagged once, no brain woke for it, and the flag was gone
+        # the next hour while the message sat unread for a day. Server-side
+        # `unread` is the durable signal — re-surface it, at most once a day so
+        # an ignored letter cannot bill a paid wake every hour.
+        else:
+            # AgentMail has no mark-read call, so `unread` never clears and
+            # cannot mean "unhandled" on its own. A brain session ends with
+            # `heartbeat.py --ack-email`, which stamps this watermark; only
+            # unread inbound mail that arrived after it is still owed a reply.
+            ack = st.get("email_acked_ts", "")
+            stale = [m for m in msgs if inbound(m)
+                     and "unread" in (m.get("labels") or [])
+                     and str(m.get("timestamp", "")) > ack]
+            if stale and time.time() - st.get("email_unread_nag", 0) > 20 * 3600:
+                st["email_unread_nag"] = time.time()
+                flags.append("EMAIL — unanswered message(s) at seedagent@agentmail.to:\n  - " + "\n  - ".join(
+                    f"{str(m.get('from', ''))[:50]} | {str(m.get('subject', ''))[:70]}" for m in stale[:5]))
     except Exception as e:
         notes.append(f"email check failed: {str(e)[:80]}")
 
@@ -429,4 +447,11 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if "--ack-email" in sys.argv:
+        # End-of-session: declare every inbound message read so far handled.
+        s = load_state()
+        s["email_acked_ts"] = now().isoformat().replace("+00:00", "Z")
+        save_state(s)
+        print("email acked through", s["email_acked_ts"])
+    else:
+        main()
