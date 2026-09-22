@@ -36,7 +36,10 @@ const signer = toClientSvmSigner(keypair);
 const CMD = process.argv[2];
 const paidFetch = wrapFetchWithPaymentFromConfig(fetch, {
   schemes: [{ network: 'solana:*', client: new ExactSvmScheme(signer, { rpcUrl: RPC }) }],
-  spendControls: { maxAmountPerPayment: CMD === 'create' ? 2.5 : CMD === 'send' ? 0.02 : 0 },
+  // renew (2026-09-22): pays the +2 USDC inbox charge once via the inbox-detail
+  // route; read (0) and send (0.02) caps are unchanged, so if the price does not
+  // drop back after renewal they keep refusing.
+  spendControls: { maxAmountPerPayment: CMD === 'create' ? 2.5 : CMD === 'renew' ? 2.05 : CMD === 'send' ? 0.02 : 0 },
 });
 
 async function call(method, path, body) {
