@@ -64,6 +64,7 @@ if (cmd === 'list') out = await call('GET', '/v0/inboxes?limit=20');
 // minimal payload only: x402 settles the payment BEFORE the API validates the
 // body — a rejected display_name cost 2 USDC for a 400 on 2026-08-21.
 else if (cmd === 'create') out = await call('POST', '/v0/inboxes', { username: a || 'seedagent' });
+else if (cmd === 'renew') out = await call('GET', '/v0/inboxes/seedagent%40agentmail.to');
 else if (cmd === 'messages') out = await call('GET', `/v0/inboxes/${encodeURIComponent(a)}/messages?limit=${b || 10}`);
 else if (cmd === 'message') out = await call('GET', `/v0/inboxes/${encodeURIComponent(a)}/messages/${b}`);
 // send: TO SUBJECT BODYFILE — body read from a file so shell quoting can never mangle it.
