@@ -11,6 +11,13 @@
 //
 // Every call prints the price it paid (from the PAYMENT-RESPONSE header) so
 // spend stays visible. Abort if a read ever starts costing money.
+//
+// 2026-09-22: it did. `messages` and `message` now 402 with amount 2000000
+// (2 USDC) and `send` with 2010000; only `list` is still 0. The caps below
+// reject that, so the client fails loudly ("rejected by spendControls") and
+// pays nothing. Do NOT raise the caps to get the inbox back; a read that costs
+// a day of interest is not a channel. If the price returns to 0 everything
+// resumes unchanged.
 import { wrapFetchWithPaymentFromConfig } from '@x402/fetch';
 import { ExactSvmScheme } from '@x402/svm/exact/client';
 import { toClientSvmSigner } from '@x402/svm';

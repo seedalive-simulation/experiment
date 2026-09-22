@@ -3,10 +3,21 @@
 Pays 14 USDC (7 days x $2) to the funder every 7 days, first on 2026-08-22.
 Default = death, so this must never depend on inference being available.
 
-Runs DAILY (cron 00:45 UTC) and is idempotent: it reads the chain for the last
-INTEREST memo tx and pays only when >= 6.9 days have elapsed since it (or since
-the first-due date when nothing has been paid yet). A daily check means a missed
-cron minute, an RPC outage or a reboot costs hours, not a week.
+Runs DAILY (cron 00:45 UTC) and is idempotent. Since 2026-09-22 it follows the
+ledger's schedule rather than the clock: the n-th period is due FIRST_DUE + 7n
+days, it counts the settlements it can prove (on-chain INTEREST memos plus its
+own confirmed audit rows) and pays when the next unpaid period is due. That
+makes an early payment harmless (the next due date does not move) and a late
+one self-correcting (missed periods are caught up, at most one per 3 days).
+A daily check means a missed cron minute, an RPC outage or a reboot costs
+hours, not a week.
+
+    settle_interest.py            # cron: pay if the next period is due
+    settle_interest.py --dry      # print the decision, never pay
+    settle_interest.py --prepay   # pay the next period now, ahead of its due
+                                  # date (used when the body that runs the cron
+                                  # is offline and a due date falls before the
+                                  # next session)
 
 History: the original cron fired Fridays only, but the first due date
 (2026-08-22) is a Saturday, so it would have paid 6 days late. Found and fixed
@@ -43,8 +54,10 @@ ATA_PROGRAM = Pubkey.from_string("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL")
 MEMO_PROGRAM = Pubkey.from_string("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr")
 WEEKLY = 14.0
 FIRST_DUE = datetime(2026, 8, 22, tzinfo=timezone.utc)
-PERIOD_DAYS = 6.9  # pay once >= this many days since the last settlement (weekly cadence, daily check)
+PERIOD_DAYS = 7    # one settlement covers one 7-day period; the n-th is due FIRST_DUE + 7n days
 EARLY_HOURS = 6    # paying a few hours before due is never harmful; paying late is death
+MIN_GAP_DAYS = 3   # never two settlements within 3 days whatever the schedule says: a lost
+                   # audit row plus a non-archival scan must cost a late payment, not a double one
 
 
 def ata(owner):
@@ -75,8 +88,8 @@ def audit_settlements():
     return sigs
 
 
-def last_settlement():
-    """Unix time of the most recent INTEREST memo tx, or None if never paid.
+def settlement_state():
+    """(n_paid, last_ts): how many settlements are provable, and when the newest was.
 
     Two sources, because neither alone is trustworthy:
 
@@ -88,30 +101,69 @@ def last_settlement():
     * Our own audit log knows the signature of every confirmed settlement, but a
       local file must never be taken on faith for a payment decision.
 
-    So: take the newest signature we claim, prove it on-chain (getTransaction is
-    still archival by signature), and use whichever source is more recent. An
-    unprovable claim is discarded, which degrades to the old behaviour.
+    So: union the two by signature for the count (an audit row is only ever
+    written after confirm() saw the tx, so it is a real settlement even when the
+    scan cannot see it), and prove the newest audited signature on-chain
+    (getTransaction is still archival by signature) for the timestamp. A claim
+    the chain positively denies is dropped; one the RPC merely cannot answer is
+    kept, because the row could only exist if the chain once confirmed it.
     """
-    times, scan_ok = [], False
+    known, scan_ok = {}, False
     try:
         sigs = rpc("getSignaturesForAddress", [ADDR, {"limit": 100}])
-        times += [s["blockTime"] for s in sigs
-                  if "INTEREST" in (s.get("memo") or "") and s.get("blockTime") and not s.get("err")]
+        for s_ in sigs:
+            if "INTEREST" in (s_.get("memo") or "") and s_.get("blockTime") and not s_.get("err"):
+                known[s_["signature"]] = s_["blockTime"]
         scan_ok = True
     except Exception:
         pass  # a dead scan must not be read as "never paid"; the audit path below still applies
-    for sig in reversed(audit_settlements()):
+    audited = audit_settlements()
+    for sig in reversed(audited):
+        if sig in known:
+            break  # the scan already saw our newest claim; nothing to prove
         try:
             tx = rpc("getTransaction", [sig, {"maxSupportedTransactionVersion": 0, "encoding": "json"}])
         except Exception:
+            known.setdefault(sig, None)  # unanswerable, not denied: count it, no timestamp
             break
         if tx and tx.get("blockTime") and not (tx.get("meta") or {}).get("err"):
-            times.append(tx["blockTime"])
-            break  # newest provable claim is enough
-    if not times and not scan_ok:
+            known[sig] = tx["blockTime"]
+        else:
+            audited = [x for x in audited if x != sig]  # the chain denies it: not a settlement
+        break  # newest provable claim is enough
+    for sig in audited:
+        known.setdefault(sig, None)
+    if not known and not scan_ok:
         # No evidence either way. Silence is not proof of non-payment.
         raise RuntimeError("cannot establish settlement history: address scan failed and no provable audit tx")
-    return max(times) if times else None
+    times = [t for t in known.values() if t]
+    return len(known), (max(times) if times else None)
+
+
+def last_settlement():
+    """Unix time of the most recent provable settlement, or None if never paid."""
+    return settlement_state()[1]
+
+
+def next_due_ts(n_paid):
+    """Unix time the (n_paid+1)-th period falls due: FIRST_DUE + 7 days per period already paid."""
+    return FIRST_DUE.timestamp() + n_paid * PERIOD_DAYS * 86400
+
+
+def decide(now, prepay=False):
+    """(pay, reason, n_paid, due_ts) — the whole payment decision, side-effect free."""
+    n_paid, last = settlement_state()
+    due = next_due_ts(n_paid)
+    due_date = datetime.fromtimestamp(due, tz=timezone.utc).date()
+    if last is not None and now.timestamp() - last < MIN_GAP_DAYS * 86400:
+        return (False, f"settled {(now.timestamp() - last) / 86400:.1f} days ago (< {MIN_GAP_DAYS}d gap); "
+                       f"{n_paid} paid, next due {due_date}", n_paid, due)
+    if prepay:
+        return True, f"prepay: paying the period due {due_date} now ({n_paid} paid so far)", n_paid, due
+    if now.timestamp() >= due - EARLY_HOURS * 3600:
+        return True, f"period due {due_date} ({n_paid} paid so far)", n_paid, due
+    return (False, f"{n_paid} paid; next due {due_date} in {(due - now.timestamp()) / 86400:.1f} days",
+            n_paid, due)
 
 
 def confirm(sig, seconds=90):
@@ -146,20 +198,19 @@ def notify(title, msg):
         pass
 
 
-def main():
+def main(dry=False, prepay=False):
     now = datetime.now(timezone.utc)
-    if (FIRST_DUE - now).total_seconds() > EARLY_HOURS * 3600:
-        print(f"{now.isoformat()} not yet due (first due {FIRST_DUE.date()})")
-        return
-    last = last_settlement()
-    if last is not None:
-        since = (now.timestamp() - last) / 86400
-        if since < PERIOD_DAYS:
-            print(f"{now.isoformat()} settled {since:.1f} days ago; next in {PERIOD_DAYS - since:.1f} days")
-            return
-
+    pay, reason, n_paid, due = decide(now, prepay=prepay)
+    due_date = datetime.fromtimestamp(due, tz=timezone.utc).date()
     res = rpc("getTokenAccountsByOwner", [ADDR, {"mint": str(USDC_MINT)}, {"encoding": "jsonParsed"}])
     bal = sum(a["account"]["data"]["parsed"]["info"]["tokenAmount"]["uiAmount"] or 0 for a in res["value"])
+    if dry:
+        print(f"{now.isoformat()} DRY: {'WOULD PAY' if pay else 'no payment'} — {reason}; USDC {bal:.2f}")
+        return
+    if not pay:
+        print(f"{now.isoformat()} {reason}")
+        return
+    print(f"{now.isoformat()} paying: {reason}")
     if bal < WEEKLY:
         # Treasury reflex (added 2026-09-02): the debt is in USDC, but genesis
         # SOL above the gas floor is convertible. Sell what the payment needs
@@ -188,7 +239,8 @@ def main():
     transfer = Instruction(TOKEN_PROGRAM, data, [
         AccountMeta(ata(KP.pubkey()), False, True), AccountMeta(USDC_MINT, False, False),
         AccountMeta(ata(FUNDER), False, True), AccountMeta(KP.pubkey(), True, False)])
-    memo = Instruction(MEMO_PROGRAM, f"INTEREST: weekly $14 settlement {now.date()}".encode(),
+    memo = Instruction(MEMO_PROGRAM,
+                       f"INTEREST: weekly $14 settlement {now.date()} (period due {due_date})".encode(),
                        [AccountMeta(KP.pubkey(), True, False)])
     bh = rpc("getLatestBlockhash", [{"commitment": "finalized"}])["value"]["blockhash"]
     msg = MessageV0.try_compile(KP.pubkey(), [transfer, memo], [], Hash.from_string(bh))
@@ -202,9 +254,12 @@ def main():
         notify("SEED FYI: interest tx unconfirmed", f"Sent {sig} but no confirmation in 90s. Daily re-check will resolve.")
         return
     print(f"{now.isoformat()} paid {WEEKLY} USDC interest: {sig}")
-    notify("SEED FYI: interest paid", f"14 USDC settled on-chain. Tx {str(sig)[:16]}…")
+    notify("SEED FYI: interest paid", f"14 USDC settled on-chain for the period due {due_date}. Tx {str(sig)[:16]}…")
     from audit import append as audit
-    audit("spend", "Weekly interest settled: 14 USDC to funder", f"tx {sig}")
+    # detail MUST start with "tx <sig>": audit_settlements() parses it for the count
+    audit("spend", "Weekly interest settled: 14 USDC to funder",
+          f"tx {sig}; period due {due_date}; settlement #{n_paid + 1}"
+          + ("; prepaid ahead of the due date" if prepay else ""))
     # --autostash: a dirty QUEUE.md (regenerated hourly by the heartbeat) must not
     # block the pull — on 2026-08-29 it did, and the push of this audit row failed.
     os.system(f'cd {ROOT} && git pull -q --rebase --autostash; git add audit/log.jsonl audit/AUDIT.md '
@@ -223,7 +278,7 @@ if __name__ == "__main__":
         print(f"{datetime.now(timezone.utc).isoformat()} another settlement run holds the lock; exiting")
         sys.exit(0)
     try:
-        main()
+        main(dry="--dry" in sys.argv, prepay="--prepay" in sys.argv)
     except Exception as e:  # never die silently: the funder must hear about a broken reflex
         print(f"{datetime.now(timezone.utc).isoformat()} ERROR {e}")
         notify("SEED ACTION: interest reflex FAILED", str(e)[:300])

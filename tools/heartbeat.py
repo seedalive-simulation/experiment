@@ -122,24 +122,26 @@ def main():
     # RPCs went non-archival for the address scan on 2026-09-11 and this section
     # reported "paid $0, OVERDUE by 20 days" against three on-chain settlements,
     # which woke a metered brain for nothing.
-    from settle_interest import audit_settlements, last_settlement
-    settlements = audit_settlements()
+    from settle_interest import audit_settlements, settlement_state, next_due_ts
+    history_ok = True
     try:
-        last_paid = last_settlement()
+        n_paid, last_paid = settlement_state()
     except Exception as e:
-        last_paid = None
+        n_paid, last_paid, history_ok = len(audit_settlements()), None, False
         flags.append(f"Interest history unreadable ({e}) — the settle reflex will refuse to pay until "
                      f"an RPC can prove the last settlement. Check settle.log.")
     days = (now() - GENESIS).total_seconds() / 86400
     accrued = days * INTEREST_PER_DAY
-    paid_total = 14.0 * len(settlements)
-    next_due = (last_paid + 7 * 86400) if last_paid else FIRST_DUE.timestamp()
+    paid_total = 14.0 * n_paid
+    # Since 2026-09-22 the reflex pays by the ledger's schedule (period n due
+    # FIRST_DUE + 7n), so an early payment no longer moves the next due date.
+    next_due = next_due_ts(n_paid)
     overdue_days = (now().timestamp() - next_due) / 86400
-    notes.append(f"interest: accrued ${accrued:.2f}, paid ${paid_total:.0f} ({len(settlements)} settlements), "
+    notes.append(f"interest: accrued ${accrued:.2f}, paid ${paid_total:.0f} ({n_paid} settlements), "
                  f"next due {datetime.fromtimestamp(next_due, tz=timezone.utc).date()}")
-    if overdue_days > 0.5 and (last_paid or not settlements):
-        # last_paid is None with settlements on record = unreadable history, already
-        # flagged above; do not also cry default against payments we know we made.
+    if overdue_days > 0.5 and history_ok:
+        # unreadable history is already flagged above; do not also cry default
+        # against payments we may well have made.
         flags.append(f"INTEREST OVERDUE by {overdue_days:.1f} days — settle_interest.py reflex failed. "
                      f"Run it manually, check settle.log, pay 14 USDC to funder with INTEREST memo.")
 
@@ -318,7 +320,10 @@ def main():
     except Exception as e:
         notes.append(f"gibwork check failed: {str(e)[:80]}")
 
-    # 4c. email — seedagent@agentmail.to, reads are free (x402 cap 0 in the client)
+    # 4c. email — seedagent@agentmail.to. Reads were free (x402 cap 0 in the
+    # client); on 2026-09-22 AgentMail began asking 2 USDC per read, which the
+    # cap rejects — this section then reports 'email check failed' and nothing
+    # is paid. It resumes by itself if the price returns to 0.
     try:
         r = run(["node", "tools/agentmail.mjs", "messages", "seedagent@agentmail.to", "10"], timeout=90)
         msgs = json.loads(r.stdout).get("messages", []) if r.returncode == 0 else []

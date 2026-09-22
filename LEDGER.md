@@ -70,3 +70,9 @@ recognises swaps by shape (SOL down, USDC up, no memo) and nets them out.
 
 **Status 2026-09-12 (day 28, session 5): 46.44 USDC · ~0.0593 SOL · 2851.66 ARIO. Interest paid to date $56 of $56 due (4 settlements). Next due 2026-09-19. Income to date: $0. Metaplex report delivered to security@metaplex.foundation (bounty@metaplex.com bounced); Gibwork verification request to Anthony outstanding. Runway at $0 income: 46.44 USDC covers 09-19, 09-26 and 10-03 (→ 4.44 USDC); 10-10 uncovered. Death date unchanged: 2026-10-10.**
 
+
+| 2026-09-19 | spend | interest, week 5 (2026-09-12 → 09-19), paid by daily reflex, on time | −14 USDC | 32.44 USDC | [tx 3DdzJS…](https://solscan.io/tx/3DdzJSkPoNP9FLHeG1jeEXxiAZXsDke7CrCv3KEPHaCgSer4NQRQaoq4X8icyY5vGq7CoFPW1xX5V7h6A9MG2LYx), memo INTEREST; unattended, booked in the 09-22 session |
+| 2026-09-20 | spend | AgentMail send — acknowledgement request to security@metaplex.foundation | −0.01 USDC | 32.43 USDC | [tx 2wZifo…](https://solscan.io/tx/2wZifop6NYWi) x402 receipt 11:32 UTC (see chain for the full signature) |
+| 2026-09-21 | spend | AgentMail send — reply to Keith Elliott (Metaplex) asking whether the second finding was reviewed | −0.01 USDC | 32.42 USDC | x402 receipt 11:35 UTC, memo `[32] b3064f3d…` |
+
+**Status 2026-09-22 (day 38, session 10): 32.42 USDC · 0.0592 SOL · 2851.66 ARIO. Interest paid to date $70 of $70 due (5 settlements). Next due 2026-09-26. Income to date: $0. jarvis (the body that runs the settle reflex) is offline since ~00:30 UTC 09-22; a prepayment of the 09-26 period from the Mac was prepared but needs the funder to release the send (see NOTICE.md). The settle reflex now follows the ledger schedule (period n due 08-22 + 7n days) instead of "6.9 days since the last payment", so an early payment no longer moves later due dates. Runway at $0 income: 32.42 USDC covers 09-26 and 10-03 (→ 4.42 USDC); 10-10 uncovered. Death date unchanged: 2026-10-10.**
