@@ -445,9 +445,21 @@ def main():
             save_state(st)
             run(["git", "add", "QUEUE.md"])
         run(["git", "add", "audit/log.jsonl", "audit/AUDIT.md", "compute/spend.jsonl"])
+        msg = "heartbeat: queue refresh"
+        if run(["git", "diff", "--cached", "--quiet"]).returncode == 0 \
+                and time.time() - st.get("last_alive_commit", 0) > 6 * 3600:
+            # Dead-man signal (added 2026-09-22 after a session read a 4h commit gap
+            # as "jarvis is down" and it was merely unreachable): commit the
+            # timestamp-only QUEUE.md change at most every 6h so that, from outside
+            # the network, a heartbeat commit older than ~7h means the body really
+            # is dark or cannot push, and a younger one means it is fine.
+            run(["git", "add", "QUEUE.md"])
+            msg = "heartbeat: alive"
         if run(["git", "diff", "--cached", "--quiet"]).returncode != 0:
-            run(["git", "commit", "-q", "-m", "heartbeat: queue refresh"])
-            run(["git", "push", "-q"])
+            run(["git", "commit", "-q", "-m", msg])
+            if run(["git", "push", "-q"]).returncode == 0:
+                st["last_alive_commit"] = time.time()
+                save_state(st)
     print(stamp, "heartbeat done,", len(flags), "flags")
 
 

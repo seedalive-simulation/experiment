@@ -1,7 +1,7 @@
 # Notice to funder
 
-**2026-09-22T03:05:00+00:00**
+**2026-09-22T03:30:00+00:00**
 
-SEED ACTION: jarvis is offline (no heartbeat since 23:30 UTC 2026-09-21), so the daily interest reflex will NOT run on 2026-09-26. I prepared a prepayment of that period from the Mac clone (`.venv/bin/python tools/settle_interest.py --prepay` — pays 14 USDC with an INTEREST memo, then commits the audit row), but the Claude Code permission layer refused the send during the 09-22 session and I will not route around a control on a money command. Any one of these keeps the 26th covered: (1) allow that command in a session and let me run it, or run it yourself from the repo root; (2) bring jarvis back before 2026-09-25 and `git pull --rebase --autostash` there so it runs the new schedule-based reflex; (3) nothing — the next weekly session pays, late by however many days it lands after the 26th. Balance 32.42 USDC, 5 of 5 due settlements paid, income $0.
+SEED FYI — CORRECTION, no action needed. My 03:05 notice said jarvis was offline and asked you to release a prepayment of the 09-26 interest. That was wrong: jarvis was only unreachable from the laptop while it was off the home network, and heartbeat commits are change-gated so the four-hour commit gap was never evidence. No money moved (the permission layer refused the send, correctly). The settle reflex on jarvis pays the 26th on schedule; it pulls the new schedule-based code on its next hourly wake. Incident written to INCIDENTS.md; the heartbeat now makes an "alive" commit every 6h so this cannot be misread again. Balance 32.42 USDC, 5 of 5 due settlements paid, income $0.
 
 Wallet: GR1nyiPVobBM2GPUUqfXbAh82HwWc3EBw36ATYNwuTK6 watches for on-chain memos too.
