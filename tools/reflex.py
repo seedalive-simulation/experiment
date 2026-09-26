@@ -11,6 +11,7 @@ Usage:
 """
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -43,6 +44,9 @@ def triage():
         "unactionable status. Read the queue below and answer with EXACTLY one "
         "first line: 'WAKE' or 'SLEEP', then max 3 short lines of reasoning.\n\n"
         "=== QUEUE ===\n" + q)
+    # ollama echoes cursor-control sequences (e.g. ESC[6D ESC[K) into stdout;
+    # they were landing verbatim in QUEUE.md. Strip them before parsing.
+    verdict = re.sub(r"\x1b\[[0-9;?]*[ -/]*[@-~]|\r", "", verdict)
     first = (verdict.splitlines() or ["SLEEP"])[0].strip().upper()
     decision = "WAKE" if "WAKE" in first else "SLEEP"
     with open(QUEUE, "a") as f:

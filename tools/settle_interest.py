@@ -93,7 +93,12 @@ def audit_settlements():
                         # silently skips a period, and a skipped period is a
                         # default. Found 2026-09-26 (queue said 7 paid, 6 real).
                         sig = "".join(c for c in detail.split()[1] if c in B58)
-                        if sig:
+                        # A Solana signature is 64 bytes = 87 or 88 base58 chars.
+                        # Anything else is a malformed row, and a malformed claim
+                        # must never count: getTransaction on it raises, and
+                        # settlement_state() reads an exception as "unanswerable,
+                        # keep" — which is exactly how the ';' row was counted.
+                        if 86 <= len(sig) <= 88:
                             sigs.append(sig)
     except OSError:
         pass

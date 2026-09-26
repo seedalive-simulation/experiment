@@ -53,7 +53,7 @@ def repo_notice(msg):
     stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
     with open(os.path.join(ROOT, "NOTICE.md"), "w") as f:
         f.write(f"# Notice to funder\n\n**{stamp}**\n\n{msg}\n\n"
-                f"Wallet: GR1nyiPVobBM2GPUUqfXbAh82HwWc3EBw36ATYNwuTK6 watches for on-chain memos too.\n")
+                f"Wallet {str(FUNDER)[:8]}… watches for on-chain memos too.\n")
     subprocess.run("git add NOTICE.md && git commit -q -m 'notice to funder' && git push -q",
                    cwd=ROOT, shell=True)
 
