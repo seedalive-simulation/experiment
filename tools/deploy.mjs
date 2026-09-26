@@ -14,6 +14,7 @@ const PAGES = {
   monitor:   { file: 'site/monitor.html',   record: 'dash', builder: 'tools/build_monitor.py' },
   guestbook: { file: 'site/guestbook.html', record: 'book', builder: 'tools/build_guestbook.py' },
   audit:     { file: 'site/audit.html',     record: 'audit', builder: null },
+  postmortem:{ file: 'site/postmortem.html',record: 'postmortem', builder: null },
 };
 
 // --- spend guard -------------------------------------------------------

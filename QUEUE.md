@@ -14,3 +14,9 @@ Autonomic heartbeat output. `flags` need a brain (start a Claude session, read W
 
 ## Needs judgment
 - RUNWAY: total assets cover at most one more interest payment (uncovered from 2026-10-17). Write POSTMORTEM.md now, while there is compute to write it; see WAKE.md 'Endgame'.
+
+## Reflex triage (local model, $0)
+- verdict: WAKE
+- Runway critical: one payment covered, next due 2026-10-10, uncovered after.[6D[K
+- after.
+- Must write POSTMORTEM.md now—last compute window.
