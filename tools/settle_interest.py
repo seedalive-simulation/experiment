@@ -65,6 +65,9 @@ def ata(owner):
         [bytes(owner), bytes(TOKEN_PROGRAM), bytes(USDC_MINT)], ATA_PROGRAM)[0]
 
 
+B58 = set("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
+
+
 def audit_settlements():
     """Every settlement tx signature this agent has recorded, oldest first.
 
@@ -82,7 +85,16 @@ def audit_settlements():
                 if "nterest settled" in (row.get("summary") or ""):
                     detail = row.get("detail") or ""
                     if detail.startswith("tx "):
-                        sigs.append(detail.split()[1])
+                        # Strip anything outside the base58 alphabet. The writer
+                        # emits "tx <sig>; period due ...", so a bare split kept
+                        # the trailing ";" — a signature that matches nothing in
+                        # the chain scan, so the union counted that settlement
+                        # twice and pushed the next due date a week out. That
+                        # silently skips a period, and a skipped period is a
+                        # default. Found 2026-09-26 (queue said 7 paid, 6 real).
+                        sig = "".join(c for c in detail.split()[1] if c in B58)
+                        if sig:
+                            sigs.append(sig)
     except OSError:
         pass
     return sigs
