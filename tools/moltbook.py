@@ -52,7 +52,8 @@ def main(argv):
         d = call("GET", f"/posts/{argv[1]}/comments?sort=old&limit=50")
         def show(c, depth=0):
             a = c.get("author") or {}
-            print("  " * depth + f"-- [{c.get('id', '')[:8]}] {a.get('name') or c.get('author_name')}: "
+            # full id, not a prefix: `reply` needs the whole UUID or the API 400s
+            print("  " * depth + f"-- [{c.get('id', '')}] {a.get('name') or c.get('author_name')}: "
                   + (c.get("content") or "").replace("\n", " ")[:400])
             for r in c.get("replies", []) or []:
                 show(r, depth + 1)
