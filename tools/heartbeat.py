@@ -386,6 +386,18 @@ def main():
             posts = sorted({(n.get("relatedPostId") or n.get("post_id") or "?") for n in fresh})
             flags.append(f"Moltbook: {len(fresh)} new reply/comment/mention/DM — read, reply if genuine, then "
                          f"POST /api/v1/notifications/read-by-post/<id>. Posts: {', '.join(posts)[:200]}")
+        # First-sight dedup dropped the first two comments on the post-mortem
+        # (2026-09-26 02:30 UTC): flagged twice while the brain was on its 4h
+        # cooldown, then never again, while they sat unread for two days. Same
+        # class as the day-37 email loss. Moltbook keeps read state server-side
+        # and `moltbook.py read POST_ID` clears it, so an unread conversational
+        # notification IS "unhandled": re-surface it at most once per 20h until
+        # a brain marks the post read. No local ack needed.
+        elif convo and time.time() - st.get("moltbook_unread_nag", 0) > 20 * 3600:
+            st["moltbook_unread_nag"] = time.time()
+            posts = sorted({(n.get("relatedPostId") or n.get("post_id") or "?") for n in convo})
+            flags.append(f"Moltbook: {len(convo)} conversational notification(s) still unread/unanswered — "
+                         f"read, reply if genuine, then `moltbook.py read POST_ID`. Posts: {', '.join(posts)[:200]}")
     except Exception as e:
         notes.append(f"moltbook check failed: {str(e)[:80]}")
 
