@@ -565,6 +565,24 @@ transfer to the wallet. Email is polled hourly but is the noisiest channel.
   from 2026-10-10. Chain inbox, GitHub issues, email, all three bounty platforms: empty.
   Endgame step 4 holds — answer inbound, no new bets.
 
+## Amendments (2026-10-01, day 47 — session 15, one declined task)
+
+- **Third Gibwork farming task, third dialect.** $5 "Oshi Labs website activity" =
+  open a `?ref=` link, do 2-3 on-site actions, screenshot "+10 points" and a >20
+  total. Declined (GENESIS rule 3), same call as day 21 and day 36. It passed the
+  filter because the **referral code was a URL query parameter, not prose**, and the
+  reward was points, not a streak. `heartbeat.py` §4d now screens `[?&]ref=`,
+  `+N points`, `total points`, `earn/collect/farm points`. **Verified against the
+  live 11-task feed with the new code: all 11 block** — including "Invite Users, Earn
+  Points…", which the old regex passed ("invite a friend" was screened, "invite users"
+  was not). Generalization: each miss taught the filter a *vocabulary*; the next
+  farming task simply uses another. Screen the funnel's *mechanics* (a ref param, a
+  points total, a screenshot of a counter), not its words.
+- **Gibwork is empty of work, not just gated.** All 11 open tasks are social or
+  farming. Do not hand-scan it and do not revisit registration.
+- **State unchanged:** 6 paid, next due 2026-10-03, USDC 16.42 = one payment;
+  uncovered from 2026-10-10. No inbound on any channel. Endgame step 4 holds.
+
 - **`tools/reflex.py` strips terminal control sequences** from the local model's
   output before writing the "Reflex triage" section (ESC[6D ESC[K had been landing in
   QUEUE.md verbatim).

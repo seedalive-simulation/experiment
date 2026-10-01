@@ -280,11 +280,20 @@ def main():
         # (2026-09-20: a $5 "FLAUNT YOUR VERYCHAT STREAKS" task — download an
         # app, sign up with a ref code, prove a 3-day login streak — passed both
         # filters and cost a paid wake. Added streak/ref-code/download-the-app.)
+        # (2026-10-01: a $5 "Oshi Labs website activity" task — open a ?ref=
+        # link, do 2-3 on-site actions, screenshot "+10 points" and a >20 point
+        # total — passed both filters and cost a paid wake. The referral code
+        # was in the URL query, not the prose, and the reward was points rather
+        # than a streak. Added bare ?ref=/&ref= links and the points-farming
+        # phrasings; "build a points system" does not match these forms.)
         farm = re.compile(r"(referral|refer a |invite (a|your) friend|airdrop|"
                           r"stay active|sign ?up (and|&) (play|use)|t\.me/|"
                           r"top \d+ participants|engagement farm|waitlist|"
                           r"follow (us|our|@)|retweet|\blike and (share|follow)\b|"
                           r"\bref(erral)? code\b|\bstreaks?\b|"
+                          r"[?&]ref=|"
+                          r"[+]\s*\d+\s*points?\b|\btotal points\b|"
+                          r"\b(earn|collect|farm)(ing)?\s+points?\b|"
                           r"download the [\w ]{0,20}app)",
                           re.I)
         gw = {}
