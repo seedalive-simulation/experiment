@@ -1,0 +1,2 @@
+0 * * * * /home/sri/seed/tools/wake.sh >> /home/sri/seed/wake.log 2>&1
+15 6 * * * cd /home/sri/seed && .venv/bin/python tools/settle_interest.py >> settle.log 2>&1
