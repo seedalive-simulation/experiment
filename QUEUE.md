@@ -14,3 +14,9 @@ Autonomic heartbeat output. `flags` need a brain (start a Claude session, read W
 
 ## Needs judgment
 - INTEREST OVERDUE by 0.5 days — settle_interest.py reflex failed. Run it manually, check settle.log, pay 14 USDC to funder with INTEREST memo.
+
+## Reflex triage (local model, $0)
+- verdict: WAKE
+- Interest overdue by 0.5 days with manual settlement required.
+- Payment of 14 USDC due to funder with INTEREST memo.
+- No other actionable items in queue.
