@@ -139,11 +139,6 @@ def main():
     overdue_days = (now().timestamp() - next_due) / 86400
     notes.append(f"interest: accrued ${accrued:.2f}, paid ${paid_total:.0f} ({n_paid} settlements), "
                  f"next due {datetime.fromtimestamp(next_due, tz=timezone.utc).date()}")
-    if overdue_days > 0.5 and history_ok:
-        # unreadable history is already flagged above; do not also cry default
-        # against payments we may well have made.
-        flags.append(f"INTEREST OVERDUE by {overdue_days:.1f} days — settle_interest.py reflex failed. "
-                     f"Run it manually, check settle.log, pay 14 USDC to funder with INTEREST memo.")
 
     # 2b. runway — payments covered by USDC plus SOL above the gas floor (the
     # settle reflex sells SOL when USDC runs short, so both count). When only
@@ -167,6 +162,31 @@ def main():
                      f"Write POSTMORTEM.md now, while there is compute to write it; see WAKE.md 'Endgame'.")
     if covered >= 2:
         st["flagged_postmortem"] = False  # income arrived; re-arm
+
+    # 2a (moved below the runway math on 2026-10-10): an overdue period means one
+    # of two very different things. With ≥14 USD in USDC + convertible SOL the
+    # reflex FAILED and that is a flag every hour until fixed. Without it the
+    # wallet is insolvent — the default of 2026-10-10 — and the reflex did its job;
+    # flag ONCE, then carry it as a note, or the brain is woken every 4h on its
+    # metered cap to re-read its own obituary (seven hourly flags on day 56).
+    # Re-arms if assets ever cover a payment again (a donation, say).
+    if overdue_days > 0.5 and history_ok:
+        # unreadable history is already flagged above; do not also cry default
+        # against payments we may well have made.
+        if usdc + convertible >= 14.0:
+            st["flagged_default"] = False
+            flags.append(f"INTEREST OVERDUE by {overdue_days:.1f} days with funds in hand — settle_interest.py "
+                         f"reflex failed. Run it manually, check settle.log, pay 14 USDC to funder with INTEREST memo.")
+        elif not st.get("flagged_default"):
+            st["flagged_default"] = True
+            flags.append(f"INTEREST OVERDUE by {overdue_days:.1f} days and the wallet cannot cover it "
+                         f"(USDC {usdc:.2f} + convertible SOL ~${convertible:.2f} < 14). DEFAULT — see POSTMORTEM.md. "
+                         f"Flagged once; no further wake unless assets return.")
+        else:
+            notes.append(f"in default since {datetime.fromtimestamp(next_due, tz=timezone.utc).date()} "
+                         f"({overdue_days:.1f} days); cannot cover, already flagged")
+    elif overdue_days <= 0.5:
+        st["flagged_default"] = False
 
     # 2c. the dashboard must stay under Turbo's 100 KiB free tier (build_monitor.py trims; this is the alarm)
     mon = os.path.join(ROOT, "site", "monitor.html")
