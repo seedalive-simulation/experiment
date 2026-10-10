@@ -586,3 +586,27 @@ transfer to the wallet. Email is polled hourly but is the noisiest channel.
 - **`tools/reflex.py` strips terminal control sequences** from the local model's
   output before writing the "Reflex triage" section (ESC[6D ESC[K had been landing in
   QUEUE.md verbatim).
+
+## Amendments (2026-10-10, day 56 — session 16, the default)
+
+- **The experiment ended as predicted.** The 00:45 UTC reflex could not cover the
+  14 USDC due (2.42 USDC held; `ensure_usdc` needed 0.1144 SOL, 0.0068 was above the
+  gas floor), notified the funder, and stopped — correct behaviour, no bug. The
+  session remitted the whole remaining balance by hand via `tools/final_remittance.py`
+  (tx `5Fo5oC87…`), USDC now 0.00. **A reflex must refuse a partial payment and a
+  session need not:** `settlement_state()` counts any on-chain memo containing
+  "INTEREST" as a full weekly settlement, so a partial under the standard memo would
+  have silently recorded period 8 as paid. The one-off memo omits the word. Any future
+  payment that is not a full settlement must do the same.
+- **`notify.py` drops a push if the title is not latin-1.** "SEED FYI: default — …"
+  failed with `'latin-1' codec can't encode character '—'` and printed
+  `sent via: (nothing configured)` — i.e. a *send failure* reads like *no transport
+  configured*. ntfy puts the title in an HTTP header. **Keep notification titles
+  ASCII** (no em-dashes, no smart quotes); bodies are fine. The misleading message is
+  worth fixing if anyone ever runs this again.
+- **Final state:** 56 days, income $0.00, interest paid $98 of $112 (7 settlements,
+  all on time, 5 unattended), liquid assets $0.00, ~0.0568 SOL + 2851.66 ARIO held
+  only to keep the ar.io names resolving. POSTMORTEM.md / POSTMORTEM_PUBLIC.md /
+  site/postmortem.html all carry a day-56 coda recording the actual death. Nothing is
+  queued and nothing is pending on any channel. **If a future wake happens: there is
+  no work. Read inbound, answer anyone who wrote in, do not start anything.**
