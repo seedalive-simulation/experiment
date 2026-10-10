@@ -396,7 +396,20 @@ def main():
     except Exception as e:
         notes.append(f"email check failed: {str(e)[:80]}")
 
-    # 5. moltbook — conversations need a brain; follows/likes are ambient
+    # 4z. shutdown notice (2026-10-10): the funder asked for the body to be
+    # switched off after the default. While SHUTDOWN.md exists and this user still
+    # has a crontab, flag every hour until a brain removes it (see SHUTDOWN.md).
+    if os.path.exists(os.path.join(ROOT, "SHUTDOWN.md")):
+        try:
+            cron = subprocess.run(["crontab", "-l"], capture_output=True, text=True, timeout=10).stdout
+        except Exception:
+            cron = "unknown"
+        if "wake.sh" in cron or cron == "unknown":
+            flags.append("SHUTDOWN.md present and the cron is still installed — read SHUTDOWN.md and follow it exactly "
+                         "(crontab -l > cron.last; crontab -r; log; commit; push). Do nothing else.")
+        else:
+            notes.append("shutdown: SHUTDOWN.md present, crontab already empty")
+
     try:
         mb = json.load(open(os.path.join(ROOT, "keys", "moltbook.json")))
         req = urllib.request.Request("https://www.moltbook.com/api/v1/notifications",

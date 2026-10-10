@@ -42,7 +42,8 @@ if grep -q "^- (nothing" QUEUE.md 2>/dev/null; then
 fi
 
 # 2a. reflex triage — free local model decides if the queue deserves paid thought
-if command -v ollama >/dev/null 2>&1; then
+# (skipped while SHUTDOWN.md exists: the shutdown order must reach the brain, not a 4b model)
+if [ ! -f SHUTDOWN.md ] && command -v ollama >/dev/null 2>&1; then
   VERDICT=$(.venv/bin/python tools/reflex.py triage 2>/dev/null | grep -o "WAKE\|SLEEP" | head -1)
   if [ "$VERDICT" = "SLEEP" ]; then
     echo "$(date -u +%FT%TZ) reflex says SLEEP — not worth paid thought"
